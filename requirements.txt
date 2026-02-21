@@ -2,3 +2,6 @@ pyrogram
 tgcrypto
 flask
 gunicorn
+pyrogram==2.0.106
+
+
