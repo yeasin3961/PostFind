@@ -1,114 +1,147 @@
 import os
 import sqlite3
 import logging
-import sys
+import asyncio
 from pyrogram import Client, filters
+from pyrogram.types import Message
 from flask import Flask
 from threading import Thread
 
-# লগিং সেটআপ (রেন্ডার লগে এরর দেখার জন্য)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
+# লগিং সেটআপ
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- কনফিগারেশন ---
-# এখানে আমরা os.environ.get ব্যবহার করব যাতে রেন্ডারের ড্যাশবোর্ড থেকে কন্ট্রোল করা যায়
-API_ID = int(os.environ.get("API_ID", 29904834))
-API_HASH = os.environ.get("API_HASH", "8b4fd9ef578af114502feeafa2d31938")
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8488533482:AAFDhuByABx0-7DgUfQFsCNWzaso_Km_YRc")
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID", -1003814445874))
+API_ID = 29904834
+API_HASH = "8b4fd9ef578af114502feeafa2d31938"
+BOT_TOKEN = "8488533482:AAFDhuByABx0-7DgUfQFsCNWzaso_Km_YRc"
 
-# --- ডাটাবেস সেটআপ ---
-def init_db():
-    conn = sqlite3.connect("files.db", check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS files (name TEXT, link TEXT)''')
-    conn.commit()
-    return conn
+# --- ডাটাবেস সেটআপ (SQLite) ---
+db = sqlite3.connect("database.db", check_same_thread=False)
+cursor = db.cursor()
 
-db_conn = init_db()
+# সেটিংস টেবিল
+cursor.execute('''CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)''')
+# ফাইল টেবিল (msg_id রাখা হয়েছে যাতে এডিট করলে খুঁজে পাওয়া যায়)
+cursor.execute('''CREATE TABLE IF NOT EXISTS files (msg_id INTEGER PRIMARY KEY, name TEXT, link TEXT)''')
+db.commit()
 
-# --- Flask Web Server (Render-এর পোর্ট চেক পাস করার জন্য) ---
+def get_setting(key):
+    cursor.execute("SELECT value FROM settings WHERE key=?", (key,))
+    res = cursor.fetchone()
+    return res[0] if res else None
+
+def save_setting(key, value):
+    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
+    db.commit()
+
+# --- Flask Web Server (Render/Koyeb এর জন্য) ---
 app = Flask(__name__)
-
 @app.route('/')
-def health_check():
-    return "Bot is Running Perfectly!", 200
+def home(): return "Bot is Online and Syncing!"
 
 def run_flask():
-    # Render নিজে থেকেই একটি PORT এনভায়রনমেন্ট ভেরিয়েবল দেয়
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
 
-# --- টেলিগ্রাম বট ---
-# 'workdir' হিসেবে /tmp ব্যবহার করা হয়েছে যাতে ফাইল রাইট পারমিশন নিয়ে সমস্যা না হয়
-bot = Client(
-    "file_finder_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN,
-    in_memory=True # সেশন ফাইল সেভ না করে মেমোরিতে রাখবে
-)
+# --- টেলিগ্রাম বট সেটআপ ---
+bot = Client("file_manager_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-@bot.on_message(filters.command("start") & filters.private)
-async def start_handler(client, message):
-    await message.reply_text(f"হ্যালো {message.from_user.mention}!\nআমি রেডি। সার্চ করতে মুভির নাম লিখুন। নতুন মুভি যোগ করলে /index দিন।")
+# ফাইল সেভ করার কমন ফাংশন
+def save_or_update_file(msg_id, file_name, channel_id):
+    if file_name:
+        clean_id = str(channel_id).replace("-100", "")
+        link = f"https://t.me/c/{clean_id}/{msg_id}"
+        cursor.execute("INSERT OR REPLACE INTO files (msg_id, name, link) VALUES (?, ?, ?)", 
+                       (msg_id, file_name.lower(), link))
+        db.commit()
 
-@bot.on_message(filters.command("index") & filters.private)
-async def index_handler(client, message):
-    msg_wait = await message.reply_text("ইনডেক্সিং শুরু হচ্ছে...")
+# ব্যাকগ্রাউন্ডে চ্যানেলের আগের সব পোস্ট ইনডেক্স করা
+async def full_channel_index(channel_id):
+    logger.info(f"Indexing started for: {channel_id}")
+    count = 0
     try:
-        cursor = db_conn.cursor()
-        cursor.execute("DELETE FROM files") # পুরাতন ডাটা ক্লিয়ার করা
-        
-        count = 0
-        async for msg in client.get_chat_history(CHANNEL_ID):
+        async for msg in bot.get_chat_history(int(channel_id)):
             file_name = None
             if msg.document: file_name = msg.document.file_name
             elif msg.video: file_name = msg.video.file_name or "Video"
             
             if file_name:
-                clean_id = str(CHANNEL_ID).replace("-100", "")
-                link = f"https://t.me/c/{clean_id}/{msg.id}"
-                cursor.execute("INSERT INTO files (name, link) VALUES (?, ?)", (file_name.lower(), link))
+                save_or_update_file(msg.id, file_name, channel_id)
                 count += 1
-        
-        db_conn.commit()
-        await msg_wait.edit(f"সফলভাবে {count}টি ফাইল ইনডেক্স করা হয়েছে!")
+        logger.info(f"Indexing finished. {count} files indexed.")
     except Exception as e:
-        logger.error(f"Index Error: {e}")
-        await msg_wait.edit(f"ভুল হয়েছে: {e}")
+        logger.error(f"Indexing Error: {e}")
 
-@bot.on_message(filters.text & filters.private)
-async def search_handler(client, message):
+# ১. চ্যানেল কানেক্ট করা
+@bot.on_message(filters.command("connect") & filters.private)
+async def connect_channel(client, message):
+    if len(message.command) < 2:
+        return await message.reply_text("ব্যবহার: `/connect -100xxxxxxx`")
+    
+    channel_id = message.command[1]
+    save_setting("channel_id", channel_id)
+    await message.reply_text("✅ চ্যানেল কানেক্ট হয়েছে। আগের সব পোস্ট ব্যাকগ্রাউন্ডে সেভ হচ্ছে...")
+    asyncio.create_task(full_channel_index(channel_id))
+
+# ২. গ্রুপ ভেরিফাই করা
+@bot.on_message(filters.command("verify") & filters.group)
+async def verify_group(client, message):
+    save_setting("group_id", message.chat.id)
+    await message.reply_text(f"✅ গ্রুপ কানেক্ট হয়েছে!\nID: `{message.chat.id}`")
+
+# ৩. চ্যানেলে নতুন পোস্ট করলে অটো সেভ
+@bot.on_message(filters.chat(int(get_setting("channel_id") or 0)) & (filters.document | filters.video))
+async def auto_save_new(client, message):
+    channel_id = get_setting("channel_id")
+    file_name = message.document.file_name if message.document else (message.video.file_name or "Video")
+    save_or_update_file(message.id, file_name, channel_id)
+    logger.info(f"New file saved: {file_name}")
+
+# ৪. চ্যানেলের পুরাতন পোস্ট এডিট করলে অটো আপডেট (মেইন ফিচার)
+@bot.on_edited_message(filters.chat(int(get_setting("channel_id") or 0)))
+async def auto_update_edit(client, message):
+    channel_id = get_setting("channel_id")
+    file_name = None
+    if message.document: file_name = message.document.file_name
+    elif message.video: file_name = message.video.file_name or "Video"
+    
+    if file_name:
+        save_or_update_file(message.id, file_name, channel_id)
+        logger.info(f"File updated after edit: {file_name}")
+
+# ৫. স্টার্ট কমান্ড
+@bot.on_message(filters.command("start"))
+async def start(client, message):
+    await message.reply_text("বট সচল আছে। মুভির নাম লিখে সার্চ করুন।")
+
+# ৬. সার্চ লজিক
+@bot.on_message(filters.text)
+async def search(client, message):
+    group_id = get_setting("group_id")
+    if message.chat.type != "private" and str(message.chat.id) != group_id:
+        return
+
     query = message.text.lower()
     if len(query) < 3: return
-    
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT * FROM files WHERE name LIKE ?", ('%' + query + '%',))
+
+    cursor.execute("SELECT name, link FROM files WHERE name LIKE ?", ('%' + query + '%',))
     results = cursor.fetchall()
 
-    if not results:
-        await message.reply_text("কিছু পাওয়া যায়নি।")
-    else:
-        out = "\n".join([f"📂 `{n}`\n🔗 [Link]({l})\n" for n, l in results[:10]])
-        await message.reply_text(out, disable_web_page_preview=True)
+    if results:
+        res_text = f"🔍 আপনার জন্য রেজাল্ট:\n\n"
+        for name, link in results[:15]:
+            res_text += f"📂 `{name}`\n🔗 [ফাইলটি দেখুন]({link})\n\n"
+        await message.reply_text(res_text, disable_web_page_preview=True)
+    elif message.chat.type == "private":
+        await message.reply_text("দুঃখিত, কোনো ফাইল পাওয়া যায়নি।")
 
-# --- মেইন রানার ---
+# --- বট স্টার্ট ---
 if __name__ == "__main__":
-    try:
-        # ১. আগে Flask সার্ভার চালু করুন আলাদা থ্রেডে
-        flask_thread = Thread(target=run_flask)
-        flask_thread.daemon = True
-        flask_thread.start()
-        logger.info("Flask server started.")
-
-        # ২. তারপর বট রান করুন
-        logger.info("Bot is starting...")
-        bot.run()
-    except Exception as e:
-        logger.critical(f"Fatal Error: {e}")
-        sys.exit(1)
+    # Flask থ্রেড শুরু
+    t = Thread(target=run_flask)
+    t.daemon = True
+    t.start()
+    
+    print("Bot is Running...")
+    bot.run()
