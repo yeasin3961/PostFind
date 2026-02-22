@@ -90,13 +90,10 @@ GLOBAL_CSS = '''
     @media(min-width: 768px) { .grid { grid-template-columns: repeat(5, 1fr); } }
     
     .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; height: 100%; display: flex; flex-direction: column; }
-    /* পোস্টার রেশিও ২:৩ করা হয়েছে যাতে সম্পূর্ণ দেখা যায় */
     .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
-    /* টাইটেল যাতে সম্পূর্ণ দেখা যায় */
     .card-title { padding: 10px 8px; font-size: 13px; text-align: center; font-weight: bold; line-height: 1.4; color: #fff; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
     
     .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; color: #fff; }
-    /* ইউজার প্যানেলে ভিউ দেখানোর জন্য ব্যাজ */
     .view-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 4px; font-size: 10px; color: #00ff00; z-index: 10; font-weight: bold; }
     
     .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 10px; }
@@ -259,6 +256,9 @@ ADMIN_LAYOUT = '''
     .btn { background: #e50914; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { text-align: left; padding: 15px; border-bottom: 1px solid #222; font-size: 14px; }
+    .search-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-row input { margin: 0; flex-grow: 1; }
+    .search-row .btn-search { width: 100px; background: #333; }
 </style>
 </head>
 <body>
@@ -354,10 +354,21 @@ MANAGE_HTML = '''
         </div>
         <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:10px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add More Download Link</button>
         <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Now{% endif %}</button>
+        {% if edit_item %}
+            <a href="/admin/manage" style="display:block; text-align:center; margin-top:10px; color:#888;">Cancel Edit</a>
+        {% endif %}
     </form>
 </div>
+
 <div class="box">
-    <h3>📂 Manage Contents</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>📂 Manage Contents</h3>
+        <form action="/admin/manage" method="GET" style="display:flex; gap:5px;">
+            <input name="q" placeholder="Search title..." value="{{ admin_q }}" style="margin:0; width:200px; padding:8px;">
+            <button class="btn" style="width:auto; padding:8px 15px; background:#444;">Search</button>
+            {% if admin_q %}<a href="/admin/manage" style="background:red; color:white; padding:8px; border-radius:8px; text-decoration:none; font-size:12px;">X</a>{% endif %}
+        </form>
+    </div>
     <table>
         <tr><th>Title</th><th>Type</th><th>Views</th><th>Action</th></tr>
         {% for i in contents %}
@@ -366,6 +377,9 @@ MANAGE_HTML = '''
             <td><a href="/admin/manage?edit_id={{ i['_id']|string }}" style="color:cyan;">Edit</a> | <a href="/admin/delete/{{ i['_id']|string }}" style="color:red;" onclick="return confirm('Are you sure?')">Delete</a></td>
         </tr>
         {% endfor %}
+        {% if not contents %}
+        <tr><td colspan="4" style="text-align:center; padding:20px; color:#888;">No content found!</td></tr>
+        {% endif %}
     </table>
 </div>
 <script>function addLinkRow(){ let d=document.createElement('div'); d.style.display='flex'; d.style.gap='5px'; d.style.marginBottom='5px'; d.innerHTML='<input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;">'; document.getElementById('link_container').appendChild(d); }</script>
@@ -510,10 +524,20 @@ def admin_dashboard():
 @app.route('/admin/manage')
 def admin_manage():
     if not session.get('is_admin'): return redirect('/login')
+    
+    # সার্চ হ্যান্ডলিং
+    admin_q = request.args.get('q', '')
+    filter_query = {}
+    if admin_q:
+        filter_query = {"title": {"$regex": admin_q, "$options": "i"}}
+    
     e_id = request.args.get('edit_id')
     e_item = content_col.find_one({"_id": ObjectId(e_id)}) if e_id else None
-    contents = list(content_col.find().sort("_id", -1))
-    return render_template("manage", menu='manage', contents=contents, edit_item=e_item)
+    
+    # ফিল্টার অনুযায়ী কন্টেন্ট আনা
+    contents = list(content_col.find(filter_query).sort("_id", -1))
+    
+    return render_template("manage", menu='manage', contents=contents, edit_item=e_item, admin_q=admin_q)
 
 @app.route('/admin/settings')
 def admin_settings():
