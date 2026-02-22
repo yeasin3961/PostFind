@@ -1,5 +1,6 @@
 import os
 import datetime
+import requests
 from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -7,7 +8,7 @@ from jinja2 import DictLoader
 
 # --- অ্যাপ কনফিগারেশন ---
 app = Flask(__name__)
-app.secret_key = "final_perfect_simple_movie_v100_full_version_updated"
+app.secret_key = "final_perfect_simple_movie_v100_full_unlocked_v2"
 
 # --- ডাটাবেস কানেকশন ---
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -50,19 +51,35 @@ def init_db():
 
 init_db()
 
-# --- এনালিটিক্স হেল্পার ফাংশন ---
+# --- সঠিক দেশ ও এনালিটিক্স ট্র্যাকিং ---
+def track_visitor():
+    try:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        # প্রথমে Cloudflare হেডার চেক করবে
+        country = request.headers.get('CF-IPCountry')
+        
+        # যদি ক্লাউডফ্লেয়ার না থাকে বা Unknown আসে, তবে API ব্যবহার করবে
+        if not country or country in ['XX', 'Unknown']:
+            # ভিজিটরের IP নেওয়া
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+            if ip and ip != '127.0.0.1':
+                try:
+                    res = requests.get(f"http://ip-api.com/json/{ip}", timeout=2).json()
+                    country = res.get('countryCode', 'Unknown')
+                except:
+                    country = 'Unknown'
+            else:
+                country = 'Local'
+
+        analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1, "views": 1}}, upsert=True)
+    except:
+        pass
+
 def track_stat(stat_type):
     try:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         analytics_col.update_one({"date": today}, {"$inc": {stat_type: 1}}, upsert=True)
-    except:
-        pass
-
-def track_visitor():
-    try:
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        country = request.headers.get('CF-IPCountry', 'Unknown') 
-        analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1}}, upsert=True)
     except:
         pass
 
@@ -90,13 +107,10 @@ GLOBAL_CSS = '''
     @media(min-width: 768px) { .grid { grid-template-columns: repeat(5, 1fr); } }
     
     .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; height: 100%; display: flex; flex-direction: column; }
-    /* পোস্টার রেশিও ২:৩ করা হয়েছে যাতে সম্পূর্ণ দেখা যায় */
     .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
-    /* টাইটেল যাতে সম্পূর্ণ দেখা যায় */
     .card-title { padding: 10px 8px; font-size: 13px; text-align: center; font-weight: bold; line-height: 1.4; color: #fff; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
     
     .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; color: #fff; }
-    /* ইউজার প্যানেলে ভিউ দেখানোর জন্য ব্যাজ */
     .view-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 4px; font-size: 10px; color: #00ff00; z-index: 10; font-weight: bold; }
     
     .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 10px; }
@@ -240,8 +254,6 @@ DETAILS_HTML = GLOBAL_CSS + '''
 </html>
 '''
 
-# --- অ্যাডমিন লেআউট এবং পেজগুলো ---
-
 ADMIN_LAYOUT = '''
 <!DOCTYPE html>
 <html>
@@ -251,8 +263,8 @@ ADMIN_LAYOUT = '''
     .sidebar { background: #111; width: 240px; height: 100vh; position: fixed; border-right: 1px solid #222; overflow-y: auto; }
     .sidebar a { display: block; padding: 15px 20px; color: #888; text-decoration: none; border-bottom: 1px solid #222; font-size: 14px; }
     .sidebar a.active { color: #fff; background: #e50914; font-weight: bold; }
-    .main { margin-left: 240px; padding: 30px; }
-    @media (max-width: 768px) { .sidebar { width: 100%; height: auto; position: relative; display: flex; overflow-x: auto; } .main { margin-left: 0; padding: 15px; } }
+    .main { margin-left: 240px; padding: 30px; width: calc(100% - 240px); box-sizing: border-box; }
+    @media (max-width: 768px) { .sidebar { width: 60px; } .sidebar span { display: none; } .main { margin-left: 60px; width: calc(100% - 60px); } }
     .card-stat { background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; text-align: center; }
     .box { background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; margin-bottom: 30px; }
     input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; box-sizing: border-box; }
@@ -263,12 +275,12 @@ ADMIN_LAYOUT = '''
 </head>
 <body>
     <div class="sidebar">
-        <div style="padding: 25px; font-weight: 900; color: #e50914; font-size: 22px;">MovieTok ADMIN</div>
-        <a href="/admin/dashboard" class="{{ 'active' if menu=='dash' }}">📊 Dashboard</a>
-        <a href="/admin/manage" class="{{ 'active' if menu=='manage' }}">🎬 Manage Content</a>
-        <a href="/admin/settings" class="{{ 'active' if menu=='settings' }}">⚙️ Site Settings</a>
-        <a href="/admin/security" class="{{ 'active' if menu=='security' }}">🔒 Admin Security</a>
-        <a href="/" style="background:#222;">🏠 Visit Site</a>
+        <div style="padding: 25px; font-weight: 900; color: #e50914; font-size: 22px;">MovieTok <span>ADMIN</span></div>
+        <a href="/admin/dashboard" class="{{ 'active' if menu=='dash' }}">📊 <span>Dashboard</span></a>
+        <a href="/admin/manage" class="{{ 'active' if menu=='manage' }}">🎬 <span>Manage Content</span></a>
+        <a href="/admin/settings" class="{{ 'active' if menu=='settings' }}">⚙️ <span>Site Settings</span></a>
+        <a href="/admin/security" class="{{ 'active' if menu=='security' }}">🔒 <span>Admin Security</span></a>
+        <a href="/" target="_blank">🏠 <span>Visit Site</span></a>
     </div>
     <div class="main">{% block content %}{% endblock %}</div>
 </body>
@@ -282,12 +294,7 @@ DASHBOARD_HTML = '''
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
     <div class="card-stat" style="border-top: 4px solid #007bff;"><h3>Movies</h3><p style="font-size: 28px; font-weight: bold;">{{ total_movies }}</p></div>
     <div class="card-stat" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 28px; font-weight: bold;">{{ total_dramas }}</p></div>
-    <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Daily Views</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
-</div>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
-    <div class="card-stat" style="padding: 15px;"><h5>Likes (Today)</h5><p>{{ today_stats.get('likes', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Comments (Today)</h5><p>{{ today_stats.get('comments', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Shares (Today)</h5><p>{{ today_stats.get('shares', 0) }}</p></div>
+    <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Views (Today)</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
 </div>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
     <div class="box">
@@ -324,33 +331,19 @@ MANAGE_HTML = '''
     <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
         <label>Title</label>
         <input name="title" placeholder="Title" value="{{ edit_item.title if edit_item }}" required>
-        
-        <label>Poster URL (Portrait/Vertical)</label>
-        <input name="poster" placeholder="https://..." value="{{ edit_item.poster if edit_item }}" required>
-        
-        <label>Thumbnail URL (Landscape/Wide - For Slider & Banner)</label>
-        <input name="thumbnail" placeholder="https://..." value="{{ edit_item.thumbnail if edit_item }}">
-        
+        <input name="poster" placeholder="Poster URL (Portrait/Vertical)" value="{{ edit_item.poster if edit_item }}" required>
+        <input name="thumbnail" placeholder="Thumbnail URL (Wide for Slider)" value="{{ edit_item.thumbnail if edit_item }}">
         <div style="display:flex; gap:10px;">
             <div style="flex:2;"><label>Badge Text</label><input name="badge_text" placeholder="e.g. 4K, HD" value="{{ edit_item.badge_text if edit_item }}"></div>
             <div style="flex:1;"><label>Badge Color</label><input name="badge_color" type="color" value="{{ edit_item.badge_color if edit_item else '#e50914' }}" style="height:48px;"></div>
         </div>
-        
-        <label>Category</label>
         <select name="category">
             <option value="movie" {{ 'selected' if edit_item and edit_item.category=='movie' }}>Movie</option>
             <option value="drama" {{ 'selected' if edit_item and edit_item.category=='drama' }}>Drama</option>
         </select>
-        
-        <label>Download/Watch Links</label>
         <div id="link_container">
-            {% if edit_item %}
-                {% for l in edit_item.links %}
-                <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" value="{{ l.label }}" style="width:30%;"><input name="urls[]" value="{{ l.url }}" style="width:70%;"></div>
-                {% endfor %}
-            {% else %}
-                <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>
-            {% endif %}
+            {% if edit_item %}{% for l in edit_item.links %}<div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" value="{{ l.label }}" style="width:30%;"><input name="urls[]" value="{{ l.url }}" style="width:70%;"></div>{% endfor %}
+            {% else %}<div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>{% endif %}
         </div>
         <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:10px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add More Download Link</button>
         <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Now{% endif %}</button>
@@ -358,6 +351,12 @@ MANAGE_HTML = '''
 </div>
 <div class="box">
     <h3>📂 Manage Contents</h3>
+    <div style="margin-bottom: 20px;">
+        <form method="GET" action="/admin/manage" style="display: flex; gap: 10px;">
+            <input name="q_admin" placeholder="সার্চ মুভি বা ড্রামা..." value="{{ q_admin }}" style="margin: 0; flex: 1;">
+            <button type="submit" class="btn" style="width: 120px;">Search</button>
+        </form>
+    </div>
     <table>
         <tr><th>Title</th><th>Type</th><th>Views</th><th>Action</th></tr>
         {% for i in contents %}
@@ -431,12 +430,37 @@ app.jinja_loader = DictLoader({
     "security": SECURITY_HTML
 })
 
-# --- ব্যাকেন্ড লজিক ---
+# --- ব্যাকেন্ড ট্র্যাকিং লজিক ---
+def track_visitor():
+    try:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        country = request.headers.get('CF-IPCountry')
+        if not country or country in ['XX', 'Unknown']:
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+            if ip and ip != '127.0.0.1':
+                try:
+                    res = requests.get(f"http://ip-api.com/json/{ip}", timeout=2).json()
+                    country = res.get('countryCode', 'Unknown')
+                except:
+                    country = 'Unknown'
+            else:
+                country = 'Local'
+        analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1, "views": 1}}, upsert=True)
+    except:
+        pass
+
+def track_stat(stat_type):
+    try:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        analytics_col.update_one({"date": today}, {"$inc": {stat_type: 1}}, upsert=True)
+    except:
+        pass
+
+# --- ব্যাকেন্ড রাউটস ---
 
 @app.route('/')
 def home():
     track_visitor()
-    track_stat('views')
     q = request.args.get('q', '')
     slider = list(content_col.find().sort("_id", -1).limit(6))
     f = {"title": {"$regex": q, "$options": "i"}} if q else {}
@@ -511,21 +535,14 @@ def admin_dashboard():
 def admin_manage():
     if not session.get('is_admin'): return redirect('/login')
     e_id = request.args.get('edit_id')
+    q_admin = request.args.get('q_admin', '')
     e_item = content_col.find_one({"_id": ObjectId(e_id)}) if e_id else None
-    contents = list(content_col.find().sort("_id", -1))
-    return render_template("manage", menu='manage', contents=contents, edit_item=e_item)
+    
+    f = {"title": {"$regex": q_admin, "$options": "i"}} if q_admin else {}
+    contents = list(content_col.find(f).sort("_id", -1))
+    
+    return render_template("manage", menu='manage', contents=contents, edit_item=e_item, q_admin=q_admin)
 
-@app.route('/admin/settings')
-def admin_settings():
-    if not session.get('is_admin'): return redirect('/login')
-    return render_template("settings", menu='settings', site_name=settings_col.find_one({"key": "site_config"})['name'], notice=settings_col.find_one({"key": "notice_config"}), popup=settings_col.find_one({"key": "popup_config"}))
-
-@app.route('/admin/security')
-def admin_security():
-    if not session.get('is_admin'): return redirect('/login')
-    return render_template("security", menu='security')
-
-# --- অন্যান্য অ্যাডমিন রাউটস ---
 @app.route('/admin/add', methods=['POST'])
 def add_new():
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
