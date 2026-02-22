@@ -7,7 +7,7 @@ from jinja2 import DictLoader
 
 # --- অ্যাপ কনফিগারেশন ---
 app = Flask(__name__)
-app.secret_key = "final_perfect_simple_movie_v100_full_version"
+app.secret_key = "final_perfect_simple_movie_v100_full_version_updated"
 
 # --- ডাটাবেস কানেকশন ---
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -87,18 +87,18 @@ GLOBAL_CSS = '''
     @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
     .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; }
     .card img { width: 100%; height: 240px; object-fit: cover; }
-    .card-title { padding: 8px; font-size: 13px; text-align: center; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-title { padding: 10px 8px; font-size: 13px; text-align: center; font-weight: bold; line-height: 1.4; color: #fff; }
     .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; color: #fff; }
+    .view-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 4px; font-size: 10px; color: #fff; z-index: 10; }
     .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 10px; }
     .slider { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
     .slide-item { min-width: 90%; margin: 0 5%; height: 220px; position: relative; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
-    .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+    .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
     .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 20px; font-size: 18px; font-weight: bold; }
     .search-box { padding: 15px; background: #000; position: sticky; top: 0; z-index: 1500; text-align: center; border-bottom: 1px solid #222; }
     .search-input { width: 90%; max-width: 600px; padding: 12px 20px; border-radius: 30px; border: 1px solid #333; background: #1a1a1a; color: #fff; outline: none; }
     .int-box { display: flex; gap: 15px; margin: 15px 0; justify-content: center; }
     .btn-int { background: #1a1a1a; padding: 10px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; border: 1px solid #333; color: #fff; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-    .btn-int:hover { border-color: var(--primary); color: var(--primary); }
     .section-head { padding: 15px 20px 0; font-size: 18px; font-weight: 700; color: #eee; border-left: 4px solid var(--primary); margin-left: 15px; }
 </style>
 '''
@@ -147,7 +147,7 @@ INDEX_HTML = GLOBAL_CSS + '''
     </div>
     {% if page_type == 'home' and not q %}
     <div class="slider-wrap"><div class="slider" id="mainSlider">
-        {% for s in slider_items %}<a href="/details/{{ s['_id']|string }}" class="slide-item"><div class="m-badge" style="background: {{ s['badge_color'] }};">{{ s['badge_text'] }}</div><img src="{{ s['poster'] }}"><div class="slide-info">{{ s['title'] }}</div></a>{% endfor %}
+        {% for s in slider_items %}<a href="/details/{{ s['_id']|string }}" class="slide-item"><div class="m-badge" style="background: {{ s['badge_color'] }};">{{ s['badge_text'] }}</div><img src="{{ s['thumbnail'] if s['thumbnail'] else s['poster'] }}"><div class="slide-info">{{ s['title'] }}</div></a>{% endfor %}
     </div></div>
     <script>
         let cur = 0; const sld = document.getElementById('mainSlider'); const total = {{ slider_items|length }};
@@ -156,7 +156,14 @@ INDEX_HTML = GLOBAL_CSS + '''
     {% endif %}
     <div class="section-head">{{ section_title }}</div>
     <div class="grid">
-        {% for item in contents %}<a href="/details/{{ item['_id']|string }}" class="card"><div class="m-badge" style="background: {{ item['badge_color'] }};">{{ item['badge_text'] }}</div><img src="{{ item['poster'] }}"><div class="card-title">{{ item['title'] }}</div></a>{% endfor %}
+        {% for item in contents %}
+        <a href="/details/{{ item['_id']|string }}" class="card">
+            <div class="m-badge" style="background: {{ item['badge_color'] }};">{{ item['badge_text'] }}</div>
+            <div class="view-badge">👁️ {{ item.get('views', 0) }}</div>
+            <img src="{{ item['poster'] }}">
+            <div class="card-title">{{ item['title'] }}</div>
+        </a>
+        {% endfor %}
     </div>
     <div class="bottom-nav">
         <a href="/" class="nav-link {{ 'active' if page_type=='home' }}"><span>🏠</span>Home</a>
@@ -174,8 +181,9 @@ DETAILS_HTML = GLOBAL_CSS + '''
 <body>
     <div class="notice-bar" style="background: {{ notice.bg_color }}; color: {{ notice.color }}; font-size: {{ notice.size }}px;">{{ notice.text }}</div>
     <div style="padding: 20px; max-width: 800px; margin: auto; margin-bottom: 100px;">
-        <img src="{{ item['poster'] }}" style="width: 100%; border-radius: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img src="{{ item['thumbnail'] if item['thumbnail'] else item['poster'] }}" style="width: 100%; border-radius: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         <h1 style="color: var(--primary); margin: 25px 0 10px; font-size: 28px;">{{ item['title'] }}</h1>
+        <div style="color:#888; margin-bottom: 15px; font-size:14px;">👁️ Total Views: {{ item.get('views', 0) }}</div>
         <div class="int-box">
             <form action="/like/{{ item['_id']|string }}" method="POST"><button class="btn-int">👍 {{ item.get('likes', 0) }}</button></form>
             <button class="btn-int" onclick="document.getElementById('comments').scrollIntoView();">💬 {{ item.get('comments', [])|length }}</button>
@@ -262,11 +270,6 @@ DASHBOARD_HTML = '''
     <div class="card-stat" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 28px; font-weight: bold;">{{ total_dramas }}</p></div>
     <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Daily Views</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
 </div>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
-    <div class="card-stat" style="padding: 15px;"><h5>Likes (Today)</h5><p>{{ today_stats.get('likes', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Comments (Today)</h5><p>{{ today_stats.get('comments', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Shares (Today)</h5><p>{{ today_stats.get('shares', 0) }}</p></div>
-</div>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
     <div class="box">
         <h3>🔥 Top 10 Popular Content</h3>
@@ -275,19 +278,6 @@ DASHBOARD_HTML = '''
             {% for i in top_content %}
             <tr><td>{{ i.title }}</td><td>{{ i.get('views', 0) }}</td></tr>
             {% endfor %}
-        </table>
-    </div>
-    <div class="box">
-        <h3>🌍 Visitor Countries (Today)</h3>
-        <table>
-            <tr><th>Country</th><th>Views</th></tr>
-            {% if today_stats.get('countries') %}
-                {% for c, v in today_stats.get('countries').items() %}
-                <tr><td>{{ c }}</td><td>{{ v }}</td></tr>
-                {% endfor %}
-            {% else %}
-                <tr><td colspan="2">No data yet</td></tr>
-            {% endif %}
         </table>
     </div>
 </div>
@@ -300,19 +290,35 @@ MANAGE_HTML = '''
 <div class="box">
     <h3>{% if edit_item %}📝 Edit Item{% else %}🎬 Add New Content{% endif %}</h3>
     <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
+        <label>Title</label>
         <input name="title" placeholder="Title" value="{{ edit_item.title if edit_item }}" required>
-        <input name="poster" placeholder="Poster Image URL" value="{{ edit_item.poster if edit_item }}" required>
+        
+        <label>Poster URL (Portrait/Vertical)</label>
+        <input name="poster" placeholder="https://..." value="{{ edit_item.poster if edit_item }}" required>
+        
+        <label>Thumbnail URL (Landscape/Wide - For Slider & Banner)</label>
+        <input name="thumbnail" placeholder="https://..." value="{{ edit_item.thumbnail if edit_item }}">
+        
         <div style="display:flex; gap:10px;">
-            <input name="badge_text" placeholder="Badge (e.g. 4K, HD)" value="{{ edit_item.badge_text if edit_item }}" style="flex:2;">
-            <input name="badge_color" type="color" value="{{ edit_item.badge_color if edit_item else '#e50914' }}" style="flex:1; height:48px;">
+            <div style="flex:2;"><label>Badge Text</label><input name="badge_text" placeholder="e.g. 4K, HD" value="{{ edit_item.badge_text if edit_item }}"></div>
+            <div style="flex:1;"><label>Badge Color</label><input name="badge_color" type="color" value="{{ edit_item.badge_color if edit_item else '#e50914' }}" style="height:48px;"></div>
         </div>
+        
+        <label>Category</label>
         <select name="category">
             <option value="movie" {{ 'selected' if edit_item and edit_item.category=='movie' }}>Movie</option>
             <option value="drama" {{ 'selected' if edit_item and edit_item.category=='drama' }}>Drama</option>
         </select>
+        
+        <label>Download/Watch Links</label>
         <div id="link_container">
-            {% if edit_item %}{% for l in edit_item.links %}<div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" value="{{ l.label }}" style="width:30%;"><input name="urls[]" value="{{ l.url }}" style="width:70%;"></div>{% endfor %}
-            {% else %}<div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>{% endif %}
+            {% if edit_item %}
+                {% for l in edit_item.links %}
+                <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" value="{{ l.label }}" style="width:30%;"><input name="urls[]" value="{{ l.url }}" style="width:70%;"></div>
+                {% endfor %}
+            {% else %}
+                <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>
+            {% endif %}
         </div>
         <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:10px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add More Download Link</button>
         <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Now{% endif %}</button>
@@ -384,8 +390,7 @@ SECURITY_HTML = '''
 {% endblock %}
 '''
 
-# --- JINJA DICT LOADER (এখানেই সমাধান) ---
-# এটি Flask-কে বলে দিচ্ছে যে "admin_layout" একটি ফাইল নয়, বরং একটি স্ট্র্রিং।
+# --- JINJA DICT LOADER ---
 app.jinja_loader = DictLoader({
     "admin_layout": ADMIN_LAYOUT,
     "dashboard": DASHBOARD_HTML,
@@ -463,16 +468,12 @@ def login_p():
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if not session.get('is_admin'): return redirect('/login')
-    try:
-        total_m = content_col.count_documents({"category": "movie"})
-        total_d = content_col.count_documents({"category": "drama"})
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        t_stats = analytics_col.find_one({"date": today}) or {"views": 0, "likes": 0, "comments": 0, "shares": 0, "countries": {}}
-        top_list = list(content_col.find().sort("views", -1).limit(10))
-        # এখানে render_template ব্যবহার হচ্ছে কারণ আমরা DictLoader সেট করেছি।
-        return render_template("dashboard", menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d)
-    except Exception as e:
-        return f"Dashboard Error: {str(e)}"
+    total_m = content_col.count_documents({"category": "movie"})
+    total_d = content_col.count_documents({"category": "drama"})
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    t_stats = analytics_col.find_one({"date": today}) or {"views": 0, "likes": 0, "comments": 0, "shares": 0, "countries": {}}
+    top_list = list(content_col.find().sort("views", -1).limit(10))
+    return render_template("dashboard", menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d)
 
 @app.route('/admin/manage')
 def admin_manage():
@@ -497,14 +498,31 @@ def admin_security():
 def add_new():
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
     links = [{'label':ls[i], 'url':us[i]} for i in range(len(ls)) if ls[i]]
-    content_col.insert_one({'title':request.form.get('title'), 'poster':request.form.get('poster'), 'badge_text':request.form.get('badge_text'), 'badge_color':request.form.get('badge_color'), 'category':request.form.get('category'), 'links':links, 'views': 0, 'likes': 0, 'shares': 0, 'comments': []})
+    content_col.insert_one({
+        'title':request.form.get('title'), 
+        'poster':request.form.get('poster'), 
+        'thumbnail':request.form.get('thumbnail'),
+        'badge_text':request.form.get('badge_text'), 
+        'badge_color':request.form.get('badge_color'), 
+        'category':request.form.get('category'), 
+        'links':links, 
+        'views': 0, 'likes': 0, 'shares': 0, 'comments': []
+    })
     return redirect('/admin/manage')
 
 @app.route('/admin/update/<id>', methods=['POST'])
 def update_item(id):
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
     links = [{'label':ls[i], 'url':us[i]} for i in range(len(ls)) if ls[i]]
-    content_col.update_one({"_id":ObjectId(id)}, {"$set": {'title':request.form.get('title'), 'poster':request.form.get('poster'), 'badge_text':request.form.get('badge_text'), 'badge_color':request.form.get('badge_color'), 'category':request.form.get('category'), 'links':links}})
+    content_col.update_one({"_id":ObjectId(id)}, {"$set": {
+        'title':request.form.get('title'), 
+        'poster':request.form.get('poster'), 
+        'thumbnail':request.form.get('thumbnail'),
+        'badge_text':request.form.get('badge_text'), 
+        'badge_color':request.form.get('badge_color'), 
+        'category':request.form.get('category'), 
+        'links':links
+    }})
     return redirect('/admin/manage')
 
 @app.route('/admin/delete/<id>')
