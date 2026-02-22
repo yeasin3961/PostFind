@@ -19,6 +19,10 @@ settings_col = db.settings
 if not settings_col.find_one({"key": "site_config"}):
     settings_col.insert_one({"key": "site_config", "name": "MovieTok Pro"})
 
+# অ্যাডমিন ক্রেডেনশিয়াল ইনিশিয়ালাইজ করা (যদি আগে না থাকে)
+if not settings_col.find_one({"key": "admin_auth"}):
+    settings_col.insert_one({"key": "admin_auth", "username": "admin", "password": "1234"})
+
 # --- প্রিমিয়াম ডিজাইন (Responsive CSS) ---
 GLOBAL_CSS = '''
 <style>
@@ -191,6 +195,15 @@ ADMIN_HTML = '''
     </div>
 
     <div class="box">
+        <h3>🔒 Admin Login Settings</h3>
+        <form method="POST" action="/admin/update_auth">
+            <input name="new_username" placeholder="New Admin Username" required>
+            <input name="new_password" type="password" placeholder="New Admin Password" required>
+            <button class="btn-main" style="background: #5d5d5d;">Change Admin Credentials</button>
+        </form>
+    </div>
+
+    <div class="box">
         <h3>{% if edit_item %}📝 Edit Item{% else %}🎬 Add New{% endif %}</h3>
         <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
             <input name="title" placeholder="Title" value="{{ edit_item['title'] if edit_item }}" required>
@@ -285,7 +298,9 @@ def details_p(id):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['u'] == 'admin' and request.form['p'] == '1234':
+        # ডাটাবেস থেকে ইউজার চেক করা হচ্ছে
+        creds = settings_col.find_one({"key": "admin_auth"})
+        if request.form['u'] == creds['username'] and request.form['p'] == creds['password']:
             session['is_admin'] = True
             return redirect('/admin')
     return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;font-family:sans-serif;"><h2>Admin Login</h2><form method="POST"><input name="u" placeholder="User"><br><br><input name="p" type="password" placeholder="Pass"><br><br><button type="submit" style="padding:10px 25px; background:#e50914; color:#fff; border:none;">Login</button></form></body>'
@@ -297,6 +312,14 @@ def admin():
     f = {"title": {"$regex": q, "$options": "i"}} if q else {}
     contents = list(content_col.find(f).sort("_id", -1))
     return render_template_string(ADMIN_HTML, contents=contents, site_name=get_site_name_db(), edit_item=None, adm_q=q)
+
+@app.route('/admin/update_auth', methods=['POST'])
+def update_auth():
+    if not session.get('is_admin'): return redirect('/login')
+    new_u = request.form.get('new_username')
+    new_p = request.form.get('new_password')
+    settings_col.update_one({"key": "admin_auth"}, {"$set": {"username": new_u, "password": new_p}})
+    return redirect('/admin')
 
 @app.route('/admin/edit/<id>')
 def edit_p(id):
