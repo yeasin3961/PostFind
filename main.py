@@ -1,5 +1,7 @@
 import os
 import datetime
+import json
+from urllib.request import urlopen
 from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -50,7 +52,7 @@ def init_db():
 
 init_db()
 
-# --- এনালিটিক্স হেল্পার ফাংশন ---
+# --- এনালিটিক্স হেল্পার ফাংশন (Updated for accurate country) ---
 def track_stat(stat_type):
     try:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -61,7 +63,29 @@ def track_stat(stat_type):
 def track_visitor():
     try:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
-        country = request.headers.get('CF-IPCountry', 'Unknown') 
+        
+        # ১. ক্লাউডফ্লেয়ার বা অন্যান্য সার্ভার হেডার থেকে দেশ খোঁজা
+        country = request.headers.get('CF-IPCountry') or \
+                  request.headers.get('X-Vercel-IP-Country') or \
+                  request.headers.get('X-Appengine-Country')
+        
+        # ২. যদি হেডার না পাওয়া যায়, তবে আইপি দিয়ে এপিআই কল করা
+        if not country or country == 'XX' or country == 'Unknown':
+            # ইউজারের রিয়েল আইপি নেওয়া (প্রক্সি থাকলে X-Forwarded-For থেকে)
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+            
+            if ip and ip != '127.0.0.1':
+                try:
+                    # একটি ফ্রি এপিআই ব্যবহার করে দেশ বের করা
+                    res = urlopen(f"http://ip-api.com/json/{ip}?fields=status,countryCode", timeout=1)
+                    geo_data = json.load(res)
+                    if geo_data.get('status') == 'success':
+                        country = geo_data.get('countryCode')
+                except:
+                    country = 'Unknown'
+            else:
+                country = 'Localhost'
+
         analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1}}, upsert=True)
     except:
         pass
@@ -256,9 +280,6 @@ ADMIN_LAYOUT = '''
     .btn { background: #e50914; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { text-align: left; padding: 15px; border-bottom: 1px solid #222; font-size: 14px; }
-    .search-row { display: flex; gap: 10px; margin-bottom: 20px; }
-    .search-row input { margin: 0; flex-grow: 1; }
-    .search-row .btn-search { width: 100px; background: #333; }
 </style>
 </head>
 <body>
@@ -283,11 +304,6 @@ DASHBOARD_HTML = '''
     <div class="card-stat" style="border-top: 4px solid #007bff;"><h3>Movies</h3><p style="font-size: 28px; font-weight: bold;">{{ total_movies }}</p></div>
     <div class="card-stat" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 28px; font-weight: bold;">{{ total_dramas }}</p></div>
     <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Daily Views</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
-</div>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
-    <div class="card-stat" style="padding: 15px;"><h5>Likes (Today)</h5><p>{{ today_stats.get('likes', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Comments (Today)</h5><p>{{ today_stats.get('comments', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Shares (Today)</h5><p>{{ today_stats.get('shares', 0) }}</p></div>
 </div>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
     <div class="box">
@@ -325,10 +341,10 @@ MANAGE_HTML = '''
         <label>Title</label>
         <input name="title" placeholder="Title" value="{{ edit_item.title if edit_item }}" required>
         
-        <label>Poster URL (Portrait/Vertical)</label>
+        <label>Poster URL</label>
         <input name="poster" placeholder="https://..." value="{{ edit_item.poster if edit_item }}" required>
         
-        <label>Thumbnail URL (Landscape/Wide - For Slider & Banner)</label>
+        <label>Thumbnail URL</label>
         <input name="thumbnail" placeholder="https://..." value="{{ edit_item.thumbnail if edit_item }}">
         
         <div style="display:flex; gap:10px;">
@@ -354,19 +370,16 @@ MANAGE_HTML = '''
         </div>
         <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:10px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add More Download Link</button>
         <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Now{% endif %}</button>
-        {% if edit_item %}
-            <a href="/admin/manage" style="display:block; text-align:center; margin-top:10px; color:#888;">Cancel Edit</a>
-        {% endif %}
     </form>
 </div>
 
 <div class="box">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h3>📂 Manage Contents</h3>
-        <form action="/admin/manage" method="GET" style="display:flex; gap:5px;">
-            <input name="q" placeholder="Search title..." value="{{ admin_q }}" style="margin:0; width:200px; padding:8px;">
-            <button class="btn" style="width:auto; padding:8px 15px; background:#444;">Search</button>
-            {% if admin_q %}<a href="/admin/manage" style="background:red; color:white; padding:8px; border-radius:8px; text-decoration:none; font-size:12px;">X</a>{% endif %}
+        <form method="GET" style="display:flex; gap:5px;">
+            <input name="search" placeholder="Search by title..." value="{{ search_q }}" style="margin:0; width:200px; padding:8px;">
+            <button type="submit" style="background:#444; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;">Search</button>
+            {% if search_q %}<a href="/admin/manage" style="background:red; color:white; padding:8px 12px; border-radius:8px; text-decoration:none;">X</a>{% endif %}
         </form>
     </div>
     <table>
@@ -377,9 +390,6 @@ MANAGE_HTML = '''
             <td><a href="/admin/manage?edit_id={{ i['_id']|string }}" style="color:cyan;">Edit</a> | <a href="/admin/delete/{{ i['_id']|string }}" style="color:red;" onclick="return confirm('Are you sure?')">Delete</a></td>
         </tr>
         {% endfor %}
-        {% if not contents %}
-        <tr><td colspan="4" style="text-align:center; padding:20px; color:#888;">No content found!</td></tr>
-        {% endif %}
     </table>
 </div>
 <script>function addLinkRow(){ let d=document.createElement('div'); d.style.display='flex'; d.style.gap='5px'; d.style.marginBottom='5px'; d.innerHTML='<input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;">'; document.getElementById('link_container').appendChild(d); }</script>
@@ -525,19 +535,15 @@ def admin_dashboard():
 def admin_manage():
     if not session.get('is_admin'): return redirect('/login')
     
-    # সার্চ হ্যান্ডলিং
-    admin_q = request.args.get('q', '')
-    filter_query = {}
-    if admin_q:
-        filter_query = {"title": {"$regex": admin_q, "$options": "i"}}
-    
+    # অ্যাডমিন সার্চ লজিক
+    search_q = request.args.get('search', '')
     e_id = request.args.get('edit_id')
+    
+    f = {"title": {"$regex": search_q, "$options": "i"}} if search_q else {}
+    contents = list(content_col.find(f).sort("_id", -1))
+    
     e_item = content_col.find_one({"_id": ObjectId(e_id)}) if e_id else None
-    
-    # ফিল্টার অনুযায়ী কন্টেন্ট আনা
-    contents = list(content_col.find(filter_query).sort("_id", -1))
-    
-    return render_template("manage", menu='manage', contents=contents, edit_item=e_item, admin_q=admin_q)
+    return render_template("manage", menu='manage', contents=contents, edit_item=e_item, search_q=search_q)
 
 @app.route('/admin/settings')
 def admin_settings():
