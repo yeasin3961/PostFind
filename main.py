@@ -1,8 +1,9 @@
 import os
 import datetime
-from flask import Flask, render_template_string, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from jinja2 import DictLoader
 
 # --- অ্যাপ কনফিগারেশন ---
 app = Flask(__name__)
@@ -51,15 +52,21 @@ init_db()
 
 # --- এনালিটিক্স হেল্পার ফাংশন ---
 def track_stat(stat_type):
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    analytics_col.update_one({"date": today}, {"$inc": {stat_type: 1}}, upsert=True)
+    try:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        analytics_col.update_one({"date": today}, {"$inc": {stat_type: 1}}, upsert=True)
+    except:
+        pass
 
 def track_visitor():
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    country = request.headers.get('CF-IPCountry', 'Unknown') 
-    analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1}}, upsert=True)
+    try:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        country = request.headers.get('CF-IPCountry', 'Unknown') 
+        analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1}}, upsert=True)
+    except:
+        pass
 
-# --- প্রিমিয়াম ডিজাইন (CSS) ---
+# --- ডিজাইন ও টেমপ্লেট ---
 GLOBAL_CSS = '''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
@@ -211,6 +218,8 @@ DETAILS_HTML = GLOBAL_CSS + '''
 </html>
 '''
 
+# --- অ্যাডমিন লেআউট এবং পেজগুলো ---
+
 ADMIN_LAYOUT = '''
 <!DOCTYPE html>
 <html>
@@ -311,7 +320,6 @@ MANAGE_HTML = '''
 </div>
 <div class="box">
     <h3>📂 Manage Contents</h3>
-    <form method="GET"><input name="adm_q" placeholder="Search to edit/delete..." value="{{ adm_q }}"></form>
     <table>
         <tr><th>Title</th><th>Type</th><th>Views</th><th>Action</th></tr>
         {% for i in contents %}
@@ -367,7 +375,6 @@ SECURITY_HTML = '''
 {% block content %}
 <div class="box">
     <h3>🔒 Change Admin Access</h3>
-    <p style="font-size:13px; color:#888;">Set a new username and password for this admin panel.</p>
     <form method="POST" action="/admin/update_auth">
         <label>New Username</label><input name="new_username" required>
         <label>New Password</label><input name="new_password" type="password" required>
@@ -376,6 +383,16 @@ SECURITY_HTML = '''
 </div>
 {% endblock %}
 '''
+
+# --- JINJA DICT LOADER (এখানেই সমাধান) ---
+# এটি Flask-কে বলে দিচ্ছে যে "admin_layout" একটি ফাইল নয়, বরং একটি স্ট্র্রিং।
+app.jinja_loader = DictLoader({
+    "admin_layout": ADMIN_LAYOUT,
+    "dashboard": DASHBOARD_HTML,
+    "manage": MANAGE_HTML,
+    "settings": SETTINGS_HTML,
+    "security": SECURITY_HTML
+})
 
 # --- ব্যাকেন্ড লজিক ---
 
@@ -443,10 +460,6 @@ def login_p():
             return redirect('/admin/dashboard')
     return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;font-family:sans-serif;"><h2>Admin Login</h2><form method="POST"><input name="u" placeholder="User" style="padding:10px;"><br><br><input name="p" type="password" placeholder="Pass" style="padding:10px;"><br><br><button type="submit" style="padding:10px 30px; background:#e50914; color:#fff; border:none; cursor:pointer;">Login</button></form></body>'
 
-@app.context_processor
-def inject_layout():
-    return dict(admin_layout=ADMIN_LAYOUT)
-
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if not session.get('is_admin'): return redirect('/login')
@@ -456,29 +469,30 @@ def admin_dashboard():
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         t_stats = analytics_col.find_one({"date": today}) or {"views": 0, "likes": 0, "comments": 0, "shares": 0, "countries": {}}
         top_list = list(content_col.find().sort("views", -1).limit(10))
-        return render_template_string(DASHBOARD_HTML, menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d)
+        # এখানে render_template ব্যবহার হচ্ছে কারণ আমরা DictLoader সেট করেছি।
+        return render_template("dashboard", menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d)
     except Exception as e:
         return f"Dashboard Error: {str(e)}"
 
 @app.route('/admin/manage')
 def admin_manage():
     if not session.get('is_admin'): return redirect('/login')
-    q = request.args.get('adm_q', '')
     e_id = request.args.get('edit_id')
     e_item = content_col.find_one({"_id": ObjectId(e_id)}) if e_id else None
-    contents = list(content_col.find({"title": {"$regex": q, "$options": "i"}}).sort("_id", -1))
-    return render_template_string(MANAGE_HTML, menu='manage', contents=contents, edit_item=e_item, adm_q=q)
+    contents = list(content_col.find().sort("_id", -1))
+    return render_template("manage", menu='manage', contents=contents, edit_item=e_item)
 
 @app.route('/admin/settings')
 def admin_settings():
     if not session.get('is_admin'): return redirect('/login')
-    return render_template_string(SETTINGS_HTML, menu='settings', site_name=settings_col.find_one({"key": "site_config"})['name'], notice=settings_col.find_one({"key": "notice_config"}), popup=settings_col.find_one({"key": "popup_config"}))
+    return render_template("settings", menu='settings', site_name=settings_col.find_one({"key": "site_config"})['name'], notice=settings_col.find_one({"key": "notice_config"}), popup=settings_col.find_one({"key": "popup_config"}))
 
 @app.route('/admin/security')
 def admin_security():
     if not session.get('is_admin'): return redirect('/login')
-    return render_template_string(SECURITY_HTML, menu='security')
+    return render_template("security", menu='security')
 
+# --- অন্যান্য অ্যাডমিন রাউটস ---
 @app.route('/admin/add', methods=['POST'])
 def add_new():
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
