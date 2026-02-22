@@ -8,7 +8,7 @@ from jinja2 import DictLoader
 
 # --- অ্যাপ কনফিগারেশন ---
 app = Flask(__name__)
-app.secret_key = "final_perfect_simple_movie_v100_full_unlocked_v2"
+app.secret_key = "final_perfect_simple_movie_v100_full_version_updated_mine_v2"
 
 # --- ডাটাবেস কানেকশন ---
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -51,17 +51,17 @@ def init_db():
 
 init_db()
 
-# --- সঠিক দেশ ও এনালিটিক্স ট্র্যাকিং ---
+# --- উন্নত দেশ ও এনালিটিক্স ট্র্যাকিং (Unknown সমস্যা সমাধান) ---
 def track_visitor():
     try:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         
-        # প্রথমে Cloudflare হেডার চেক করবে
+        # প্রথমে Cloudflare হেডার চেক করা হবে
         country = request.headers.get('CF-IPCountry')
         
-        # যদি ক্লাউডফ্লেয়ার না থাকে বা Unknown আসে, তবে API ব্যবহার করবে
+        # যদি ক্লাউডফ্লেয়ার না থাকে বা দেশ না পাওয়া যায়, তবে API ব্যবহার করা হবে
         if not country or country in ['XX', 'Unknown']:
-            # ভিজিটরের IP নেওয়া
+            # ভিজিটরের আসল আইপি (Proxy থাকলে X-Forwarded-For ব্যবহার)
             ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
             if ip and ip != '127.0.0.1':
                 try:
@@ -108,7 +108,7 @@ GLOBAL_CSS = '''
     
     .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; height: 100%; display: flex; flex-direction: column; }
     .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
-    .card-title { padding: 10px 8px; font-size: 13px; text-align: center; font-weight: bold; line-height: 1.4; color: #fff; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+    .card-title { padding: 10px 8px; font-size: 13px; text-align: center; font-weight: bold; line-height: 1.4; color: #fff; flex-grow: 1; display: flex; align-items: center; justify-content: center; word-break: break-word; }
     
     .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; color: #fff; }
     .view-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 4px; font-size: 10px; color: #00ff00; z-index: 10; font-weight: bold; }
@@ -225,7 +225,7 @@ DETAILS_HTML = GLOBAL_CSS + '''
             <h3>Comments</h3>
             <form action="/comment/{{ item['_id']|string }}" method="POST">
                 <input name="user" placeholder="Your Name" style="width:100%; padding:12px; background:#111; border:1px solid #333; color:#fff; border-radius:8px; margin-bottom:12px;" required>
-                <textarea name="text" placeholder="Write a comment..." style="width:100%; padding:12px; background:#111; border:1px solid #333; color:#fff; border-radius:8px; height:80px; font-family:inherit;" required></textarea>
+                <textarea name="text" placeholder="Write a comment..." style="width:100%; padding:12px; background:#111; border:1px solid #333; color:#fff; border-radius:8px; height:80px;" required></textarea>
                 <button style="width:100%; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; margin-top:10px; cursor:pointer; font-weight:bold;">Post Comment</button>
             </form>
             <div style="margin-top: 25px; border-top: 1px solid #222;">
@@ -254,6 +254,8 @@ DETAILS_HTML = GLOBAL_CSS + '''
 </html>
 '''
 
+# --- অ্যাডমিন লেআউট এবং পেজগুলো ---
+
 ADMIN_LAYOUT = '''
 <!DOCTYPE html>
 <html>
@@ -265,7 +267,7 @@ ADMIN_LAYOUT = '''
     .sidebar a.active { color: #fff; background: #e50914; font-weight: bold; }
     .main { margin-left: 240px; padding: 30px; width: calc(100% - 240px); box-sizing: border-box; }
     @media (max-width: 768px) { .sidebar { width: 60px; } .sidebar span { display: none; } .main { margin-left: 60px; width: calc(100% - 60px); } }
-    .card-stat { background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; text-align: center; }
+    .card-stat { background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; text-align: center; border-bottom: 4px solid #e50914; }
     .box { background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; margin-bottom: 30px; }
     input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; box-sizing: border-box; }
     .btn { background: #e50914; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
@@ -290,22 +292,14 @@ ADMIN_LAYOUT = '''
 DASHBOARD_HTML = '''
 {% extends "admin_layout" %}
 {% block content %}
-<h2>System Analytics</h2>
+<h2>System Overview</h2>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
-    <div class="card-stat" style="border-top: 4px solid #007bff;"><h3>Movies</h3><p style="font-size: 28px; font-weight: bold;">{{ total_movies }}</p></div>
-    <div class="card-stat" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 28px; font-weight: bold;">{{ total_dramas }}</p></div>
-    <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Views (Today)</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
+    <div class="card-stat"><h3>Movies</h3><p style="font-size: 24px; font-weight: bold;">{{ total_movies }}</p></div>
+    <div class="card-stat"><h3>Dramas</h3><p style="font-size: 24px; font-weight: bold;">{{ total_dramas }}</p></div>
+    <div class="card-stat"><h3>Views (Today)</h3><p style="font-size: 24px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
 </div>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
-    <div class="box">
-        <h3>🔥 Top 10 Popular Content</h3>
-        <table>
-            <tr><th>Title</th><th>Total Views</th></tr>
-            {% for i in top_content %}
-            <tr><td>{{ i.title }}</td><td>{{ i.get('views', 0) }}</td></tr>
-            {% endfor %}
-        </table>
-    </div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px;">
     <div class="box">
         <h3>🌍 Visitor Countries (Today)</h3>
         <table>
@@ -317,6 +311,15 @@ DASHBOARD_HTML = '''
             {% else %}
                 <tr><td colspan="2">No data yet</td></tr>
             {% endif %}
+        </table>
+    </div>
+    <div class="box">
+        <h3>🔥 Popular Content</h3>
+        <table>
+            <tr><th>Title</th><th>Views</th></tr>
+            {% for i in top_content %}
+            <tr><td>{{ i.title }}</td><td>{{ i.get('views', 0) }}</td></tr>
+            {% endfor %}
         </table>
     </div>
 </div>
@@ -331,10 +334,10 @@ MANAGE_HTML = '''
     <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
         <label>Title</label>
         <input name="title" placeholder="Title" value="{{ edit_item.title if edit_item }}" required>
-        <input name="poster" placeholder="Poster URL (Portrait/Vertical)" value="{{ edit_item.poster if edit_item }}" required>
-        <input name="thumbnail" placeholder="Thumbnail URL (Wide for Slider)" value="{{ edit_item.thumbnail if edit_item }}">
+        <input name="poster" placeholder="Poster URL (2:3)" value="{{ edit_item.poster if edit_item }}" required>
+        <input name="thumbnail" placeholder="Thumbnail URL" value="{{ edit_item.thumbnail if edit_item }}">
         <div style="display:flex; gap:10px;">
-            <div style="flex:2;"><label>Badge Text</label><input name="badge_text" placeholder="e.g. 4K, HD" value="{{ edit_item.badge_text if edit_item }}"></div>
+            <div style="flex:2;"><label>Badge Text</label><input name="badge_text" value="{{ edit_item.badge_text if edit_item }}"></div>
             <div style="flex:1;"><label>Badge Color</label><input name="badge_color" type="color" value="{{ edit_item.badge_color if edit_item else '#e50914' }}" style="height:48px;"></div>
         </div>
         <select name="category">
@@ -345,12 +348,14 @@ MANAGE_HTML = '''
             {% if edit_item %}{% for l in edit_item.links %}<div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" value="{{ l.label }}" style="width:30%;"><input name="urls[]" value="{{ l.url }}" style="width:70%;"></div>{% endfor %}
             {% else %}<div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>{% endif %}
         </div>
-        <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:10px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add More Download Link</button>
+        <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:8px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add Link</button>
         <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Now{% endif %}</button>
     </form>
 </div>
+
 <div class="box">
     <h3>📂 Manage Contents</h3>
+    <!-- অ্যাডমিন সার্চ বার -->
     <div style="margin-bottom: 20px;">
         <form method="GET" action="/admin/manage" style="display: flex; gap: 10px;">
             <input name="q_admin" placeholder="সার্চ মুভি বা ড্রামা..." value="{{ q_admin }}" style="margin: 0; flex: 1;">
@@ -362,7 +367,7 @@ MANAGE_HTML = '''
         {% for i in contents %}
         <tr>
             <td>{{ i.title }}</td><td>{{ i.category }}</td><td>{{ i.get('views', 0) }}</td>
-            <td><a href="/admin/manage?edit_id={{ i['_id']|string }}" style="color:cyan;">Edit</a> | <a href="/admin/delete/{{ i['_id']|string }}" style="color:red;" onclick="return confirm('Are you sure?')">Delete</a></td>
+            <td><a href="/admin/manage?edit_id={{ i['_id']|string }}" style="color:cyan;">Edit</a> | <a href="/admin/delete/{{ i['_id']|string }}" style="color:red;" onclick="return confirm('Confirm delete?')">Delete</a></td>
         </tr>
         {% endfor %}
     </table>
@@ -379,22 +384,22 @@ SETTINGS_HTML = '''
     <form method="POST" action="/admin/site_name"><label>Site Name</label><input name="site_name" value="{{ site_name }}"><button class="btn">Update Site Name</button></form>
 </div>
 <div class="box">
-    <h3>📢 Top Notice Bar Settings</h3>
+    <h3>📢 Top Notice Bar</h3>
     <form method="POST" action="/admin/update_notice">
-        <label>Notice Text</label><input name="notice_text" value="{{ notice.text }}">
+        <input name="notice_text" value="{{ notice.text }}">
         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
             <div><label>Text Color</label><input name="notice_color" type="color" value="{{ notice.color }}"></div>
             <div><label>BG Color</label><input name="notice_bg" type="color" value="{{ notice.bg_color }}"></div>
-            <div><label>Size (px)</label><input name="notice_size" type="number" value="{{ notice.size }}"></div>
+            <div><label>Size</label><input name="notice_size" type="number" value="{{ notice.size }}"></div>
         </div>
         <button class="btn">Update Notice Bar</button>
     </form>
 </div>
 <div class="box">
-    <h3>✨ Pop-up Notice Settings</h3>
+    <h3>✨ Pop-up Settings</h3>
     <form method="POST" action="/admin/update_popup">
-        <label>Popup Message</label><input name="popup_text" value="{{ popup.text }}">
-        <label>Media Link (Join Button)</label><input name="join_link" value="{{ popup.join_link }}">
+        <input name="popup_text" value="{{ popup.text }}">
+        <input name="join_link" value="{{ popup.join_link }}">
         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:10px;">
             <div><label>Text Color</label><input name="popup_color" type="color" value="{{ popup.text_color }}"></div>
             <div><label>BG Color</label><input name="popup_bg" type="color" value="{{ popup.bg_color }}"></div>
@@ -411,11 +416,11 @@ SECURITY_HTML = '''
 {% extends "admin_layout" %}
 {% block content %}
 <div class="box">
-    <h3>🔒 Change Admin Access</h3>
+    <h3>🔒 Admin Access Control</h3>
     <form method="POST" action="/admin/update_auth">
         <label>New Username</label><input name="new_username" required>
         <label>New Password</label><input name="new_password" type="password" required>
-        <button class="btn">Update Credentials</button>
+        <button class="btn">Update Access</button>
     </form>
 </div>
 {% endblock %}
@@ -430,37 +435,12 @@ app.jinja_loader = DictLoader({
     "security": SECURITY_HTML
 })
 
-# --- ব্যাকেন্ড ট্র্যাকিং লজিক ---
-def track_visitor():
-    try:
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        country = request.headers.get('CF-IPCountry')
-        if not country or country in ['XX', 'Unknown']:
-            ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-            if ip and ip != '127.0.0.1':
-                try:
-                    res = requests.get(f"http://ip-api.com/json/{ip}", timeout=2).json()
-                    country = res.get('countryCode', 'Unknown')
-                except:
-                    country = 'Unknown'
-            else:
-                country = 'Local'
-        analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1, "views": 1}}, upsert=True)
-    except:
-        pass
-
-def track_stat(stat_type):
-    try:
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        analytics_col.update_one({"date": today}, {"$inc": {stat_type: 1}}, upsert=True)
-    except:
-        pass
-
-# --- ব্যাকেন্ড রাউটস ---
+# --- ব্যাকেন্ড লজিক ---
 
 @app.route('/')
 def home():
     track_visitor()
+    track_stat('views')
     q = request.args.get('q', '')
     slider = list(content_col.find().sort("_id", -1).limit(6))
     f = {"title": {"$regex": q, "$options": "i"}} if q else {}
@@ -519,7 +499,7 @@ def login_p():
         if request.form['u'] == creds['username'] and request.form['p'] == creds['password']:
             session['is_admin'] = True
             return redirect('/admin/dashboard')
-    return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;font-family:sans-serif;"><h2>Admin Login</h2><form method="POST"><input name="u" placeholder="User" style="padding:10px;"><br><br><input name="p" type="password" placeholder="Pass" style="padding:10px;"><br><br><button type="submit" style="padding:10px 30px; background:#e50914; color:#fff; border:none; cursor:pointer;">Login</button></form></body>'
+    return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;"><h2>Admin Login</h2><form method="POST"><input name="u" placeholder="User" style="padding:10px;"><br><br><input name="p" type="password" placeholder="Pass" style="padding:10px;"><br><br><button type="submit" style="padding:10px 30px; background:#e50914; color:#fff; border:none; cursor:pointer;">Login</button></form></body>'
 
 @app.route('/admin/dashboard')
 def admin_dashboard():
@@ -535,9 +515,11 @@ def admin_dashboard():
 def admin_manage():
     if not session.get('is_admin'): return redirect('/login')
     e_id = request.args.get('edit_id')
-    q_admin = request.args.get('q_admin', '')
+    q_admin = request.args.get('q_admin', '') # অ্যাডমিন সার্চ কিউরি নেওয়া
+    
     e_item = content_col.find_one({"_id": ObjectId(e_id)}) if e_id else None
     
+    # অ্যাডমিন সার্চ ফিল্টার
     f = {"title": {"$regex": q_admin, "$options": "i"}} if q_admin else {}
     contents = list(content_col.find(f).sort("_id", -1))
     
