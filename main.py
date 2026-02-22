@@ -70,7 +70,7 @@ GLOBAL_CSS = '''
     /* পপ-আপ ডিজাইন */
     #popupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
     .popup-content { width: 90%; max-width: 450px; border-radius: 20px; padding: 35px 20px; position: relative; text-align: center; border: 1px solid #333; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-    .popup-header { position: absolute; top: 12px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; }
+    .popup-header { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; }
     .btn-popup-join { background: #0088cc; color: #fff; font-size: 11px; padding: 5px 12px; border-radius: 50px; font-weight: bold; }
     .btn-popup-close { background: #444; color: #fff; font-size: 14px; width: 25px; height: 25px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
@@ -194,7 +194,7 @@ DETAILS_HTML = GLOBAL_CSS + '''
         <div class="int-box">
             <form action="/like/{{ item['_id']|string }}" method="POST"><button class="btn-int">👍 {{ item.get('likes', 0) }}</button></form>
             <button class="btn-int" onclick="document.getElementById('comments').scrollIntoView();">💬 {{ item.get('comments', [])|length }}</button>
-            <button class="btn-int" onclick="copyShare()">🔗 <span id="shareTxt">Share</span></button>
+            <button class="btn-int" onclick="copyShare()">🔗 <span id="shTxt">Share</span></button>
         </div>
 
         <div style="background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; margin-top: 25px;">
@@ -216,18 +216,18 @@ DETAILS_HTML = GLOBAL_CSS + '''
             </div>
         </div>
     </div>
-    
+
     <script>
         function copyShare() {
             const url = window.location.href;
             navigator.clipboard.writeText(url).then(() => {
-                document.getElementById('shareTxt').innerText = "Copied!";
-                fetch('/share/{{ item["_id"]|string }}', {method: 'POST'});
-                setTimeout(() => { document.getElementById('shareTxt').innerText = "Share"; }, 2000);
-            });
+                document.getElementById('shTxt').innerText = "Copied!";
+                fetch('/share/{{ item["_id"]|string }}', { method: 'POST' });
+                setTimeout(() => { document.getElementById('shTxt').innerText = "Share"; }, 2000);
+            }).catch(err => { alert("Copy failed"); });
         }
     </script>
-
+    
     <div class="bottom-nav">
         <a href="/" class="nav-link"><span>🏠</span>Home</a>
         <a href="/movies" class="nav-link"><span>🎬</span>Movies</a>
@@ -252,7 +252,7 @@ ADMIN_LAYOUT = '''
     @media (max-width: 768px) { .sidebar { width: 100%; height: auto; position: relative; display: flex; overflow-x: auto; } .main { margin-left: 0; padding: 15px; } }
     .card-stat { background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; text-align: center; }
     .box { background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; margin-bottom: 30px; }
-    input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; box-sizing: border-box; }
+    input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; box-sizing: border-box; }
     .btn { background: #e50914; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { text-align: left; padding: 15px; border-bottom: 1px solid #222; font-size: 14px; }
@@ -481,16 +481,16 @@ def inject_layout():
 def admin_dashboard():
     if not session.get('is_admin'): return redirect('/login')
     
-    # ড্যাশবোর্ড ডাটা সংগ্রহ
     total_m = content_col.count_documents({"category": "movie"})
     total_d = content_col.count_documents({"category": "drama"})
     
-    # MongoDB Atlas Free Tier Fix (dbStats Permission Error)
+    # Storage Fix: Broad exception catch to prevent Internal Server Error
+    storage = "N/A"
     try:
         db_stats = db.command("dbStats")
         storage = round(db_stats.get('storageSize', 0) / (1024 * 1024), 2)
     except Exception:
-        storage = "N/A (No Permission)"
+        storage = "Unknown (Atlas Limited)"
         
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     t_stats = analytics_col.find_one({"date": today}) or {}
