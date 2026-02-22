@@ -16,7 +16,7 @@ content_col = db.contents
 settings_col = db.settings
 analytics_col = db.analytics 
 
-# --- ডাটাবেস ইনিশিয়ালাইজেশন (সব সেটিংস চেক করা হচ্ছে) ---
+# --- ডাটাবেস ইনিশিয়ালাইজেশন ---
 def init_db():
     if not settings_col.find_one({"key": "site_config"}):
         settings_col.insert_one({"key": "site_config", "name": "MovieTok Pro"})
@@ -64,23 +64,19 @@ GLOBAL_CSS = '''
     body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
     a { text-decoration: none; color: inherit; }
     
-    /* নোটিশ বার */
     .notice-bar { width: 100%; padding: 8px 10px; text-align: center; font-weight: 600; position: relative; z-index: 2500; display: block; box-sizing: border-box; }
 
-    /* পপ-আপ ডিজাইন */
     #popupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
     .popup-content { width: 90%; max-width: 450px; border-radius: 20px; padding: 35px 20px; position: relative; text-align: center; border: 1px solid #333; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     .popup-header { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; }
     .btn-popup-join { background: #0088cc; color: #fff; font-size: 11px; padding: 5px 12px; border-radius: 50px; font-weight: bold; }
     .btn-popup-close { background: #444; color: #fff; font-size: 14px; width: 25px; height: 25px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    /* বটম নেভিগেশন */
     .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 2000; }
     .nav-link { color: #888; font-size: 12px; font-weight: 600; text-align: center; flex: 1; transition: 0.3s; }
     .nav-link.active { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
     .nav-link span { display: block; font-size: 20px; margin-bottom: 2px; }
 
-    /* গ্রিড ও কার্ড */
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 15px; margin-bottom: 90px; }
     @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
     .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; }
@@ -88,23 +84,19 @@ GLOBAL_CSS = '''
     .card-title { padding: 8px; font-size: 13px; text-align: center; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; color: #fff; }
 
-    /* অটো স্লাইডার */
     .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 10px; }
     .slider { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
     .slide-item { min-width: 90%; margin: 0 5%; height: 220px; position: relative; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
     .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 20px; font-size: 18px; font-weight: bold; }
 
-    /* সার্চ বার */
     .search-box { padding: 15px; background: #000; position: sticky; top: 0; z-index: 1500; text-align: center; border-bottom: 1px solid #222; }
     .search-input { width: 90%; max-width: 600px; padding: 12px 20px; border-radius: 30px; border: 1px solid #333; background: #1a1a1a; color: #fff; outline: none; }
 
-    /* ইন্টারেকশন বাটন */
     .int-box { display: flex; gap: 15px; margin: 15px 0; justify-content: center; }
     .btn-int { background: #1a1a1a; padding: 10px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; border: 1px solid #333; color: #fff; font-weight: bold; display: flex; align-items: center; gap: 5px; }
     .btn-int:hover { border-color: var(--primary); color: var(--primary); }
 
-    /* সেকশন হেডার */
     .section-head { padding: 15px 20px 0; font-size: 18px; font-weight: 700; color: #eee; border-left: 4px solid var(--primary); margin-left: 15px; }
 </style>
 '''
@@ -138,7 +130,7 @@ POPUP_SNIPPET = '''
 </script>
 '''
 
-# --- টেমপ্লেটস (Templates) ---
+# --- টেমপ্লেটস ---
 
 INDEX_HTML = GLOBAL_CSS + '''
 <!DOCTYPE html>
@@ -237,8 +229,6 @@ DETAILS_HTML = GLOBAL_CSS + '''
 </html>
 '''
 
-# --- অ্যাডমিন লেআউট (Admin Layout) ---
-
 ADMIN_LAYOUT = '''
 <!DOCTYPE html>
 <html>
@@ -279,7 +269,6 @@ DASHBOARD_HTML = '''
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
     <div class="card-stat" style="border-top: 4px solid #007bff;"><h3>Movies</h3><p style="font-size: 28px; font-weight: bold;">{{ total_movies }}</p></div>
     <div class="card-stat" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 28px; font-weight: bold;">{{ total_dramas }}</p></div>
-    <div class="card-stat" style="border-top: 4px solid #28a745;"><h3>Storage Use</h3><p style="font-size: 28px; font-weight: bold;">{{ db_storage }} MB</p></div>
     <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Daily Views</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
 </div>
 
@@ -405,7 +394,7 @@ SECURITY_HTML = '''
 {% endblock %}
 '''
 
-# --- ব্যাকেন্ড লজিক (Backend Logic) ---
+# --- ব্যাকেন্ড লজিক ---
 
 @app.route('/')
 def home():
@@ -442,7 +431,6 @@ def details_p(id):
     if not item: return redirect('/')
     return render_template_string(DETAILS_HTML, item=item, notice=settings_col.find_one({"key": "notice_config"}))
 
-# ইউজার অ্যাকশন রাউটস
 @app.route('/like/<id>', methods=['POST'])
 def handle_like(id):
     content_col.update_one({"_id": ObjectId(id)}, {"$inc": {"likes": 1}})
@@ -463,7 +451,6 @@ def handle_comment(id):
         track_stat('comments')
     return redirect(f'/details/{id}')
 
-# অ্যাডমিন প্যানেল সিস্টেম
 @app.route('/login', methods=['GET', 'POST'])
 def login_p():
     if request.method == 'POST':
@@ -484,19 +471,11 @@ def admin_dashboard():
     total_m = content_col.count_documents({"category": "movie"})
     total_d = content_col.count_documents({"category": "drama"})
     
-    # Storage Fix: Broad exception catch to prevent Internal Server Error
-    storage = "N/A"
-    try:
-        db_stats = db.command("dbStats")
-        storage = round(db_stats.get('storageSize', 0) / (1024 * 1024), 2)
-    except Exception:
-        storage = "Unknown (Atlas Limited)"
-        
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     t_stats = analytics_col.find_one({"date": today}) or {}
     top_list = list(content_col.find().sort("views", -1).limit(10))
     
-    return render_template_string(DASHBOARD_HTML, menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d, db_storage=storage)
+    return render_template_string(DASHBOARD_HTML, menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d)
 
 @app.route('/admin/manage')
 def admin_manage():
@@ -517,7 +496,6 @@ def admin_security():
     if not session.get('is_admin'): return redirect('/login')
     return render_template_string(SECURITY_HTML, menu='security')
 
-# CRUD এবং সেটিংস হ্যান্ডলিং রাউটস
 @app.route('/admin/add', methods=['POST'])
 def add_new():
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
