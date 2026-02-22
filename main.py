@@ -5,10 +5,10 @@ from bson.objectid import ObjectId
 
 # --- APP CONFIGURATION ---
 app = Flask(__name__)
-app.secret_key = "download_portal_absolute_final_v25"
+app.secret_key = "absolute_zero_missing_download_v30"
 
 # --- DATABASE CONNECTION ---
-# আপনার দেওয়া MongoDB URI সরাসরি যুক্ত করা হয়েছে
+# আপনার দেওয়া MongoDB URI
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client.movie_pro_database
@@ -19,15 +19,15 @@ settings_col = db.settings
 if not settings_col.find_one({"key": "site_config"}):
     settings_col.insert_one({"key": "site_config", "name": "MovieTok Download"})
 
-# --- UI DESIGN (PREMIUM CSS) ---
-GLOBAL_CSS = '''
+# --- UI DESIGN (PREMIUM GLOBAL CSS) ---
+GLOBAL_STYLE = '''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
-    :root { --primary: #ff0050; --accent: #9333ea; --bg: #000; --card: #151515; }
+    :root { --primary: #ff0050; --purple: #9333ea; --bg: #000; --card: #151515; }
     body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
     a { text-decoration: none; color: inherit; }
     
-    /* Navigation Bottom */
+    /* Navigation Bar */
     .nav-bottom { position: fixed; bottom: 0; width: 100%; background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(15px); 
                   display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 2000; }
     .nav-link { color: #888; font-size: 13px; font-weight: 600; text-align: center; flex: 1; transition: 0.3s; }
@@ -45,14 +45,14 @@ GLOBAL_CSS = '''
     .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
     .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 25px 15px; }
 
-    /* Grid Layout */
+    /* Grid & Poster Badges */
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 15px; margin-bottom: 85px; }
     @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
-    .card { position: relative; background: var(--card); border-radius: 15px; overflow: hidden; border: 1px solid #222; }
+    .card { position: relative; background: var(--card); border-radius: 15px; overflow: hidden; border: 1px solid #222; transition: 0.3s; }
     .card img { width: 100%; height: 250px; object-fit: cover; }
     .card-title { padding: 10px; font-size: 13px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    /* Manual Badge */
+    /* Corner Badge */
     .m-badge { position: absolute; top: 10px; left: 10px; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     .section-head { padding: 15px 20px 0; font-size: 18px; font-weight: 700; border-left: 4px solid var(--primary); margin-left: 10px; }
 </style>
@@ -60,13 +60,13 @@ GLOBAL_CSS = '''
 
 # --- TEMPLATES ---
 
-# ১. ইউজার মেইন পেজ
-INDEX_HTML = GLOBAL_CSS + '''
+# ১. হোমপেজ, মুভি ও ড্রামা পেজ
+INDEX_HTML = GLOBAL_STYLE + '''
 <!DOCTYPE html>
 <html>
 <head><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ site_name }}</title></head>
 <body>
-    <div style="padding: 20px; text-align: center; font-size: 26px; font-weight: 900; color: var(--primary); letter-spacing: 1px; text-transform: uppercase;">{{ site_name }}</div>
+    <div style="padding: 20px; text-align: center; font-size: 26px; font-weight: 900; color: var(--primary); text-transform: uppercase;">{{ site_name }}</div>
     
     <div class="search-box">
         <form action="{{ request.path }}" method="GET">
@@ -118,7 +118,7 @@ INDEX_HTML = GLOBAL_CSS + '''
 </html>
 '''
 
-# ২. ডিটেইল পেজ (TikTok Vertical Scroll Version - Poster & Download Buttons)
+# ২. ডিটেইল পেজ (TikTok Vertical Swipe - Poster & Download UI)
 DETAILS_HTML = '''
 <!DOCTYPE html>
 <html>
@@ -127,37 +127,36 @@ DETAILS_HTML = '''
     body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; }
     .feed { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; }
     .feed::-webkit-scrollbar { display: none; }
-    .v-unit { height: 100vh; width: 100%; scroll-snap-align: start; position: relative; display: flex; align-items: center; justify-content: center; }
+    .v-unit { height: 100vh; width: 100%; scroll-snap-align: start; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     
-    /* Background Blur Effect */
-    .bg-poster { position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px) brightness(0.4); z-index: 1; }
-    .main-poster { position: relative; width: 85%; max-width: 400px; height: 60%; border-radius: 20px; object-fit: cover; z-index: 2; border: 3px solid #9333ea; box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); }
+    .bg-blur { position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(25px) brightness(0.3); z-index: 1; transform: scale(1.1); }
+    .main-poster { position: relative; width: 85%; max-width: 380px; height: 60%; border-radius: 25px; object-fit: cover; z-index: 2; border: 3px solid var(--purple, #9333ea); box-shadow: 0 10px 40px rgba(147, 51, 234, 0.4); }
     
-    .ui-data { position: absolute; bottom: 120px; left: 20px; z-index: 10; text-shadow: 2px 2px 10px #000; max-width: 80%; }
+    .ui-data { position: absolute; bottom: 120px; left: 20px; z-index: 10; text-shadow: 2px 2px 10px #000; max-width: 75%; }
     .sidebar { position: absolute; right: 20px; bottom: 120px; display: flex; flex-direction: column; gap: 15px; z-index: 20; }
     
-    .btn-dl { background: linear-gradient(45deg, #ff0050, #9333ea); color: #fff; border: none; padding: 15px 20px; border-radius: 15px; font-weight: bold; font-size: 14px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: 0.3s; }
+    .btn-dl { background: linear-gradient(45deg, #ff0050, #9333ea); color: #fff; border: none; padding: 16px 20px; border-radius: 18px; font-weight: 800; font-size: 13px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.6); transition: 0.3s; min-width: 80px; }
     .btn-dl:active { transform: scale(0.9); }
     
-    .back { position: absolute; top: 25px; left: 20px; font-size: 24px; color: white; z-index: 100; text-decoration: none; background: rgba(0,0,0,0.4); width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+    .back { position: absolute; top: 25px; left: 20px; font-size: 24px; color: white; z-index: 100; text-decoration: none; background: rgba(0,0,0,0.5); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); }
 </style>
 </head>
 <body>
     <a href="/" class="back">✕</a>
     <div class="feed">
-        {{ render_item(current) }}
-        {% for item in others %} {{ render_item(item) }} {% endfor %}
+        {{ render_row(current) }}
+        {% for item in others %} {{ render_row(item) }} {% endfor %}
     </div>
 
-    {% macro render_item(item) %}
+    {% macro render_row(item) %}
     <div class="v-unit">
-        <img src="{{ item['poster'] }}" class="bg-poster">
+        <img src="{{ item['poster'] }}" class="bg-blur">
         <img src="{{ item['poster'] }}" class="main-poster">
         
         <div class="ui-data">
-            <span style="background:{{ item['badge_color'] }}; padding:4px 12px; border-radius:6px; font-size:11px; font-weight:bold; text-transform:uppercase;">{{ item['badge_text'] }}</span>
-            <h2 style="margin: 15px 0; color: #fff; font-size: 26px; line-height: 1.2;">{{ item['title'] }}</h2>
-            <p style="color: #ccc; font-size: 14px;">Select a server or quality below to start download.</p>
+            <span style="background:{{ item['badge_color'] }}; padding:5px 12px; border-radius:8px; font-size:10px; font-weight:900; text-transform:uppercase;">{{ item['badge_text'] }}</span>
+            <h2 style="margin: 12px 0; color: #fff; font-size: 28px; font-weight: 800; line-height: 1.1;">{{ item['title'] }}</h2>
+            <p style="color: #ddd; font-size: 14px; opacity: 0.8;">Tap on buttons to download or watch.</p>
         </div>
         
         <div class="sidebar">
@@ -171,26 +170,27 @@ DETAILS_HTML = '''
 </html>
 '''
 
-# ৩. এডমিন প্যানেল
+# ৩. এডমিন প্যানেল (Full Features)
 ADMIN_HTML = '''
 <!DOCTYPE html>
 <html>
 <head><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-    body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+    body { font-family: sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
     .box { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 25px; max-width: 700px; margin: auto; }
     input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-    .btn-save { background: #28a745; color: #fff; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .btn-main { background: #000; color: #fff; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .btn-green { background: #28a745; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
     .search-adm { padding: 10px; margin-bottom: 15px; width: 100%; border: 2px solid #000; border-radius: 10px; }
 </style>
 </head>
 <body>
     <div class="box">
-        <h3>⚙️ Site Name Settings</h3>
+        <h3>⚙️ Global Settings</h3>
         <form method="POST" action="/admin/site_name">
-            <input name="site_name" value="{{ site_name }}">
-            <button class="btn-save" style="background:#000;">Save Name</button>
+            <input name="site_name" value="{{ site_name }}" placeholder="Site Name">
+            <button class="btn-main">Save Site Name</button>
         </form>
     </div>
 
@@ -216,16 +216,16 @@ ADMIN_HTML = '''
                     <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="Link" style="width:70%;"></div>
                 {% endif %}
             </div>
-            <button type="button" onclick="addL()" style="width:100%; padding:10px; margin-bottom:10px; cursor:pointer;">+ Add Link</button>
-            <button type="submit" class="btn-save">{% if edit_item %} UPDATE {% else %} PUBLISH {% endif %}</button>
+            <button type="button" onclick="addL()" style="width:100%; padding:10px; margin-bottom:10px; cursor:pointer; border-radius:8px;">+ Add More Link</button>
+            <button type="submit" class="btn-main btn-green">{% if edit_item %} UPDATE NOW {% else %} PUBLISH NOW {% endif %}</button>
         </form>
     </div>
 
     <div class="box">
-        <h3>📂 Manage All</h3>
+        <h3>📂 Manage Content</h3>
         <form method="GET" action="/admin"><input name="adm_q" class="search-adm" placeholder="Search by title..." value="{{ adm_q }}"></form>
         {% for i in contents %}
-        <div class="row">
+        <div class="item-row">
             <span>{{ i['title'] }}</span>
             <div>
                 <a href="/admin/edit/{{ i['_id'] }}" style="color:blue;">Edit</a> | 
@@ -233,7 +233,7 @@ ADMIN_HTML = '''
             </div>
         </div>
         {% endfor %}
-        <br><a href="/" style="display:block; text-align:center;">Home</a>
+        <br><a href="/" style="display:block; text-align:center;">Back Home</a>
     </div>
     <script>
         function addL() {
@@ -248,7 +248,7 @@ ADMIN_HTML = '''
 
 # --- BACKEND LOGIC ---
 
-def get_sn():
+def get_site_name():
     c = settings_col.find_one({"key": "site_config"})
     return c['name'] if c else "MovieTok"
 
@@ -258,8 +258,8 @@ def home():
     slider = list(content_col.find().sort("_id", -1).limit(6))
     f = {"title": {"$regex": q, "$options": "i"}} if q else {}
     contents = list(content_col.find(f).sort("_id", -1))
-    st = f"Search: {q}" if q else "🔥 New Uploads"
-    return render_template_string(INDEX_HTML, page_type='home', slider_items=slider, contents=contents, section_title=st, site_name=get_sn(), q=q)
+    st = f"🔍 Search: {q}" if q else "🔥 New Arrivals"
+    return render_template_string(INDEX_HTML, page_type='home', slider_items=slider, contents=contents, section_title=st, site_name=get_site_name(), q=q)
 
 @app.route('/movies')
 def movies_p():
@@ -267,7 +267,7 @@ def movies_p():
     f = {'category': 'movie'}
     if q: f['title'] = {"$regex": q, "$options": "i"}
     contents = list(content_col.find(f).sort("_id", -1))
-    return render_template_string(INDEX_HTML, page_type='movies', contents=contents, section_title="🎬 Blockbuster Movies", site_name=get_sn(), q=q)
+    return render_template_string(INDEX_HTML, page_type='movies', contents=contents, section_title="🎬 Blockbuster Movies", site_name=get_site_name(), q=q)
 
 @app.route('/drama')
 def drama_p():
@@ -275,37 +275,37 @@ def drama_p():
     f = {'category': 'drama'}
     if q: f['title'] = {"$regex": q, "$options": "i"}
     contents = list(content_col.find(f).sort("_id", -1))
-    return render_template_string(INDEX_HTML, page_type='drama', contents=contents, section_title="📺 Popular Drama", site_name=get_sn(), q=q)
+    return render_template_string(INDEX_HTML, page_type='drama', contents=contents, section_title="📺 Popular Drama", site_name=get_site_name(), q=q)
 
 @app.route('/details/<id>')
-def details(id):
+def details_p(id):
     try:
-        c = content_col.find_one({"_id": ObjectId(id)})
-        o = list(content_col.find({"_id": {"$ne": ObjectId(id)}}).limit(15))
-        return render_template_string(DETAILS_HTML, current=c, others=o)
+        curr = content_col.find_one({"_id": ObjectId(id)})
+        others = list(content_col.find({"_id": {"$ne": ObjectId(id)}}).limit(20))
+        return render_template_string(DETAILS_HTML, current=curr, others=others)
     except: return redirect('/')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         if request.form['u'] == 'admin' and request.form['p'] == '1234':
-            session['admin'] = True
+            session['is_admin'] = True
             return redirect('/admin')
-    return '<body style="background:#000; color:#fff; text-align:center; padding-top:100px;"><h2>Admin</h2><form method="POST"><input name="u"><br><br><input name="p" type="password"><br><br><button type="submit">Login</button></form></body>'
+    return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;"><h2>Login</h2><form method="POST"><input name="u"><br><br><input name="p" type="password"><br><br><button type="submit">Login</button></form></body>'
 
 @app.route('/admin')
 def admin():
-    if not session.get('admin'): return redirect('/login')
+    if not session.get('is_admin'): return redirect('/login')
     q = request.args.get('adm_q', '')
     f = {"title": {"$regex": q, "$options": "i"}} if q else {}
     contents = list(content_col.find(f).sort("_id", -1))
-    return render_template_string(ADMIN_HTML, contents=contents, site_name=get_sn(), edit_item=None, adm_q=q)
+    return render_template_string(ADMIN_HTML, contents=contents, site_name=get_site_name(), edit_item=None, adm_q=q)
 
 @app.route('/admin/edit/<id>')
-def edit(id):
-    if not session.get('admin'): return redirect('/login')
+def edit_page(id):
+    if not session.get('is_admin'): return redirect('/login')
     item = content_col.find_one({"_id": ObjectId(id)})
-    return render_template_string(ADMIN_HTML, contents=list(content_col.find().sort("_id", -1)), site_name=get_sn(), edit_item=item, adm_q="")
+    return render_template_string(ADMIN_HTML, contents=list(content_col.find().sort("_id", -1)), site_name=get_site_name(), edit_item=item, adm_q="")
 
 @app.route('/admin/add', methods=['POST'])
 def add():
@@ -322,13 +322,13 @@ def update(id):
     return redirect('/admin')
 
 @app.route('/admin/site_name', methods=['POST'])
-def site_n():
+def update_site():
     settings_col.update_one({"key":"site_config"}, {"$set":{"name":request.form.get('site_name')}})
     return redirect('/admin')
 
 @app.route('/admin/delete/<id>')
 def delete(id):
-    if session.get('admin'): content_col.delete_one({"_id":ObjectId(id)})
+    if session.get('is_admin'): content_col.delete_one({"_id":ObjectId(id)})
     return redirect('/admin')
 
 if __name__ == '__main__':
