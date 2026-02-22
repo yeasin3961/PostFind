@@ -182,6 +182,8 @@ INDEX_HTML = GLOBAL_CSS + '''
         <a href="/drama" class="nav-link {{ 'active' if page_type=='drama' }}"><span>📺</span>Drama</a>
     </div>
 </body>
+<script src="https://pl27086336.effectivegatecpm.com/e1/c7/cb/e1c7cba8047534fa081eed07b4774cb3.js"></script>
+<script src="https://pl27086317.effectivegatecpm.com/58/bf/a6/58bfa61d4e5a88e1fff8b0244e1e12fb.js"></script>
 </html>
 '''
 
