@@ -194,7 +194,7 @@ DETAILS_HTML = GLOBAL_CSS + '''
         <div class="int-box">
             <form action="/like/{{ item['_id']|string }}" method="POST"><button class="btn-int">👍 {{ item.get('likes', 0) }}</button></form>
             <button class="btn-int" onclick="document.getElementById('comments').scrollIntoView();">💬 {{ item.get('comments', [])|length }}</button>
-            <button class="btn-int" onclick="copyShareLink('{{ item['_id']|string }}')">🔗 <span id="shTxt">Share</span></button>
+            <button class="btn-int" onclick="copyShare()">🔗 <span id="shareTxt">Share</span></button>
         </div>
 
         <div style="background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; margin-top: 25px;">
@@ -216,18 +216,18 @@ DETAILS_HTML = GLOBAL_CSS + '''
             </div>
         </div>
     </div>
-
+    
     <script>
-        function copyShareLink(id) {
+        function copyShare() {
             const url = window.location.href;
             navigator.clipboard.writeText(url).then(() => {
-                document.getElementById('shTxt').innerText = "Copied!";
-                fetch('/share/' + id, { method: 'POST' });
-                setTimeout(() => { document.getElementById('shTxt').innerText = "Share"; }, 2000);
+                document.getElementById('shareTxt').innerText = "Copied!";
+                fetch('/share/{{ item["_id"]|string }}', {method: 'POST'});
+                setTimeout(() => { document.getElementById('shareTxt').innerText = "Share"; }, 2000);
             });
         }
     </script>
-    
+
     <div class="bottom-nav">
         <a href="/" class="nav-link"><span>🏠</span>Home</a>
         <a href="/movies" class="nav-link"><span>🎬</span>Movies</a>
@@ -489,8 +489,8 @@ def admin_dashboard():
     try:
         db_stats = db.command("dbStats")
         storage = round(db_stats.get('storageSize', 0) / (1024 * 1024), 2)
-    except:
-        storage = "N/A"
+    except Exception:
+        storage = "N/A (No Permission)"
         
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     t_stats = analytics_col.find_one({"date": today}) or {}
