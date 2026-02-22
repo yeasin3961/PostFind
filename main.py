@@ -74,37 +74,27 @@ GLOBAL_CSS = '''
     body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
     a { text-decoration: none; color: inherit; }
     .notice-bar { width: 100%; padding: 8px 10px; text-align: center; font-weight: 600; position: relative; z-index: 2500; display: block; box-sizing: border-box; }
-    
     #popupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
     .popup-content { width: 90%; max-width: 450px; border-radius: 20px; padding: 35px 20px; position: relative; text-align: center; border: 1px solid #333; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     .popup-header { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; }
     .btn-popup-join { background: #0088cc; color: #fff; font-size: 11px; padding: 5px 12px; border-radius: 50px; font-weight: bold; }
     .btn-popup-close { background: #444; color: #fff; font-size: 14px; width: 25px; height: 25px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    
     .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 2000; }
     .nav-link { color: #888; font-size: 12px; font-weight: 600; text-align: center; flex: 1; transition: 0.3s; }
     .nav-link.active { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
     .nav-link span { display: block; font-size: 20px; margin-bottom: 2px; }
-    
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 15px; margin-bottom: 90px; }
-    @media(min-width: 768px) { .grid { grid-template-columns: repeat(5, 1fr); } }
-    
-    .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; height: 100%; display: flex; flex-direction: column; }
-    /* পোস্টার রেশিও ২:৩ করা হয়েছে যাতে সম্পূর্ণ দেখা যায় */
-    .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
-    /* টাইটেল যাতে সম্পূর্ণ দেখা যায় */
-    .card-title { padding: 10px 8px; font-size: 13px; text-align: center; font-weight: bold; line-height: 1.4; color: #fff; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
-    
+    @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+    .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; }
+    .card img { width: 100%; height: 240px; object-fit: cover; }
+    .card-title { padding: 10px 8px; font-size: 13px; text-align: center; font-weight: bold; line-height: 1.4; color: #fff; }
     .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; color: #fff; }
-    /* ইউজার প্যানেলে ভিউ দেখানোর জন্য ব্যাজ */
-    .view-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 4px; font-size: 10px; color: #00ff00; z-index: 10; font-weight: bold; }
-    
+    .view-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 4px; font-size: 10px; color: #fff; z-index: 10; }
     .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 10px; }
     .slider { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
     .slide-item { min-width: 90%; margin: 0 5%; height: 220px; position: relative; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
     .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 20px; font-size: 18px; font-weight: bold; }
-    
     .search-box { padding: 15px; background: #000; position: sticky; top: 0; z-index: 1500; text-align: center; border-bottom: 1px solid #222; }
     .search-input { width: 90%; max-width: 600px; padding: 12px 20px; border-radius: 30px; border: 1px solid #333; background: #1a1a1a; color: #fff; outline: none; }
     .int-box { display: flex; gap: 15px; margin: 15px 0; justify-content: center; }
@@ -157,11 +147,7 @@ INDEX_HTML = GLOBAL_CSS + '''
     </div>
     {% if page_type == 'home' and not q %}
     <div class="slider-wrap"><div class="slider" id="mainSlider">
-        {% for s in slider_items %}<a href="/details/{{ s['_id']|string }}" class="slide-item">
-            <div class="m-badge" style="background: {{ s['badge_color'] }};">{{ s['badge_text'] }}</div>
-            <img src="{{ s['thumbnail'] if s['thumbnail'] else s['poster'] }}">
-            <div class="slide-info">{{ s['title'] }}</div>
-        </a>{% endfor %}
+        {% for s in slider_items %}<a href="/details/{{ s['_id']|string }}" class="slide-item"><div class="m-badge" style="background: {{ s['badge_color'] }};">{{ s['badge_text'] }}</div><img src="{{ s['thumbnail'] if s['thumbnail'] else s['poster'] }}"><div class="slide-info">{{ s['title'] }}</div></a>{% endfor %}
     </div></div>
     <script>
         let cur = 0; const sld = document.getElementById('mainSlider'); const total = {{ slider_items|length }};
@@ -284,11 +270,6 @@ DASHBOARD_HTML = '''
     <div class="card-stat" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 28px; font-weight: bold;">{{ total_dramas }}</p></div>
     <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Daily Views</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
 </div>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
-    <div class="card-stat" style="padding: 15px;"><h5>Likes (Today)</h5><p>{{ today_stats.get('likes', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Comments (Today)</h5><p>{{ today_stats.get('comments', 0) }}</p></div>
-    <div class="card-stat" style="padding: 15px;"><h5>Shares (Today)</h5><p>{{ today_stats.get('shares', 0) }}</p></div>
-</div>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
     <div class="box">
         <h3>🔥 Top 10 Popular Content</h3>
@@ -297,19 +278,6 @@ DASHBOARD_HTML = '''
             {% for i in top_content %}
             <tr><td>{{ i.title }}</td><td>{{ i.get('views', 0) }}</td></tr>
             {% endfor %}
-        </table>
-    </div>
-    <div class="box">
-        <h3>🌍 Visitor Countries (Today)</h3>
-        <table>
-            <tr><th>Country</th><th>Views</th></tr>
-            {% if today_stats.get('countries') %}
-                {% for c, v in today_stats.get('countries').items() %}
-                <tr><td>{{ c }}</td><td>{{ v }}</td></tr>
-                {% endfor %}
-            {% else %}
-                <tr><td colspan="2">No data yet</td></tr>
-            {% endif %}
         </table>
     </div>
 </div>
