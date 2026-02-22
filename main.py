@@ -8,7 +8,7 @@ app.secret_key = "super_secret_tiktok_key"
 
 # --- MongoDB Connection ---
 # Render/Koyeb এর Environment Variable থেকে MONGO_URI নেবে
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://admin:password@cluster.mongodb.net/test")
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 client = MongoClient(MONGO_URI)
 db = client.tiktok_db
 videos_col = db.videos
