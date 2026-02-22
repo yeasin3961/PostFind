@@ -52,7 +52,7 @@ def init_db():
 
 init_db()
 
-# --- এনালিটিক্স হেল্পার ফাংশন (Updated for accurate country) ---
+# --- এনালিটিক্স ও কান্ট্রি ট্র্যাকিং ফাংশন ---
 def track_stat(stat_type):
     try:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -63,24 +63,17 @@ def track_stat(stat_type):
 def track_visitor():
     try:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
+        # প্রথমে ক্লাউডফ্লেয়ার বা অন্যান্য সার্ভার হেডার চেক করা
+        country = request.headers.get('CF-IPCountry') or request.headers.get('X-Vercel-IP-Country')
         
-        # ১. ক্লাউডফ্লেয়ার বা অন্যান্য সার্ভার হেডার থেকে দেশ খোঁজা
-        country = request.headers.get('CF-IPCountry') or \
-                  request.headers.get('X-Vercel-IP-Country') or \
-                  request.headers.get('X-Appengine-Country')
-        
-        # ২. যদি হেডার না পাওয়া যায়, তবে আইপি দিয়ে এপিআই কল করা
-        if not country or country == 'XX' or country == 'Unknown':
-            # ইউজারের রিয়েল আইপি নেওয়া (প্রক্সি থাকলে X-Forwarded-For থেকে)
+        # যদি হেডার না থাকে তবে IP API ব্যবহার করা
+        if not country or country == 'XX':
             ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-            
             if ip and ip != '127.0.0.1':
                 try:
-                    # একটি ফ্রি এপিআই ব্যবহার করে দেশ বের করা
-                    res = urlopen(f"http://ip-api.com/json/{ip}?fields=status,countryCode", timeout=1)
+                    res = urlopen(f"http://ip-api.com/json/{ip}?fields=countryCode", timeout=2)
                     geo_data = json.load(res)
-                    if geo_data.get('status') == 'success':
-                        country = geo_data.get('countryCode')
+                    country = geo_data.get('countryCode', 'Unknown')
                 except:
                     country = 'Unknown'
             else:
@@ -90,7 +83,7 @@ def track_visitor():
     except:
         pass
 
-# --- ডিজাইন ও টেমপ্লেট ---
+# --- ডিজাইন ও সিএসএস ---
 GLOBAL_CSS = '''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
@@ -134,6 +127,7 @@ GLOBAL_CSS = '''
 </style>
 '''
 
+# --- টেমপ্লেটসমূহ ---
 POPUP_SNIPPET = '''
 <div id="popupOverlay">
     <div class="popup-content" style="background: {{ popup.bg_color }};">
@@ -261,7 +255,7 @@ DETAILS_HTML = GLOBAL_CSS + '''
 </html>
 '''
 
-# --- অ্যাডমিন লেআউট এবং পেজগুলো ---
+# --- অ্যাডমিন প্যানেল টেমপ্লেট ---
 
 ADMIN_LAYOUT = '''
 <!DOCTYPE html>
@@ -340,25 +334,20 @@ MANAGE_HTML = '''
     <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
         <label>Title</label>
         <input name="title" placeholder="Title" value="{{ edit_item.title if edit_item }}" required>
-        
         <label>Poster URL</label>
         <input name="poster" placeholder="https://..." value="{{ edit_item.poster if edit_item }}" required>
-        
         <label>Thumbnail URL</label>
         <input name="thumbnail" placeholder="https://..." value="{{ edit_item.thumbnail if edit_item }}">
-        
         <div style="display:flex; gap:10px;">
             <div style="flex:2;"><label>Badge Text</label><input name="badge_text" placeholder="e.g. 4K, HD" value="{{ edit_item.badge_text if edit_item }}"></div>
             <div style="flex:1;"><label>Badge Color</label><input name="badge_color" type="color" value="{{ edit_item.badge_color if edit_item else '#e50914' }}" style="height:48px;"></div>
         </div>
-        
         <label>Category</label>
         <select name="category">
             <option value="movie" {{ 'selected' if edit_item and edit_item.category=='movie' }}>Movie</option>
             <option value="drama" {{ 'selected' if edit_item and edit_item.category=='drama' }}>Drama</option>
         </select>
-        
-        <label>Download/Watch Links</label>
+        <label>Download Links</label>
         <div id="link_container">
             {% if edit_item %}
                 {% for l in edit_item.links %}
@@ -368,7 +357,7 @@ MANAGE_HTML = '''
                 <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>
             {% endif %}
         </div>
-        <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:10px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add More Download Link</button>
+        <button type="button" onclick="addLinkRow()" style="background:#333; color:#fff; padding:10px; border:none; border-radius:5px; margin:10px 0; width:100%; cursor:pointer;">+ Add More Link</button>
         <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Now{% endif %}</button>
     </form>
 </div>
@@ -377,9 +366,9 @@ MANAGE_HTML = '''
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h3>📂 Manage Contents</h3>
         <form method="GET" style="display:flex; gap:5px;">
-            <input name="search" placeholder="Search by title..." value="{{ search_q }}" style="margin:0; width:200px; padding:8px;">
+            <input name="admin_q" placeholder="Search title..." value="{{ admin_q }}" style="margin:0; width:200px; padding:8px;">
             <button type="submit" style="background:#444; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;">Search</button>
-            {% if search_q %}<a href="/admin/manage" style="background:red; color:white; padding:8px 12px; border-radius:8px; text-decoration:none;">X</a>{% endif %}
+            {% if admin_q %}<a href="/admin/manage" style="background:red; color:white; padding:8px 12px; border-radius:8px; text-decoration:none;">X</a>{% endif %}
         </form>
     </div>
     <table>
@@ -419,7 +408,7 @@ SETTINGS_HTML = '''
     <h3>✨ Pop-up Notice Settings</h3>
     <form method="POST" action="/admin/update_popup">
         <label>Popup Message</label><input name="popup_text" value="{{ popup.text }}">
-        <label>Media Link (Join Button)</label><input name="join_link" value="{{ popup.join_link }}">
+        <label>Media Link</label><input name="join_link" value="{{ popup.join_link }}">
         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:10px;">
             <div><label>Text Color</label><input name="popup_color" type="color" value="{{ popup.text_color }}"></div>
             <div><label>BG Color</label><input name="popup_bg" type="color" value="{{ popup.bg_color }}"></div>
@@ -535,15 +524,15 @@ def admin_dashboard():
 def admin_manage():
     if not session.get('is_admin'): return redirect('/login')
     
-    # অ্যাডমিন সার্চ লজিক
-    search_q = request.args.get('search', '')
+    # অ্যাডমিন প্যানেলে সার্চ লজিক
+    admin_q = request.args.get('admin_q', '')
     e_id = request.args.get('edit_id')
     
-    f = {"title": {"$regex": search_q, "$options": "i"}} if search_q else {}
+    f = {"title": {"$regex": admin_q, "$options": "i"}} if admin_q else {}
     contents = list(content_col.find(f).sort("_id", -1))
     
     e_item = content_col.find_one({"_id": ObjectId(e_id)}) if e_id else None
-    return render_template("manage", menu='manage', contents=contents, edit_item=e_item, search_q=search_q)
+    return render_template("manage", menu='manage', contents=contents, edit_item=e_item, admin_q=admin_q)
 
 @app.route('/admin/settings')
 def admin_settings():
@@ -555,7 +544,6 @@ def admin_security():
     if not session.get('is_admin'): return redirect('/login')
     return render_template("security", menu='security')
 
-# --- অন্যান্য অ্যাডমিন রাউটস ---
 @app.route('/admin/add', methods=['POST'])
 def add_new():
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
