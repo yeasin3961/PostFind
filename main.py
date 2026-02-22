@@ -5,9 +5,10 @@ from bson.objectid import ObjectId
 
 # --- অ্যাপ কনফিগারেশন ---
 app = Flask(__name__)
-app.secret_key = "full_zero_missing_pro_v11_master"
+app.secret_key = "tik_movie_pro_absolute_final_master_v12"
 
 # --- ডাটাবেস কানেকশন ---
+# আপনার দেওয়া MongoDB URI সরাসরি ব্যবহার করা হয়েছে
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client.movie_pro_database
@@ -18,22 +19,24 @@ settings_col = db.settings
 if not settings_col.find_one({"key": "site_config"}):
     settings_col.insert_one({"key": "site_config", "name": "MovieTok Pro"})
 
-# --- প্লেয়ার লজিক (YouTube, Koyeb, MP4, MKV Support) ---
+# --- ইউনিভার্সাল প্লেয়ার লজিক ---
 def get_player_type(url):
     """লিঙ্কটি ভিডিও ট্যাগ নাকি আইফ্রেম দিয়ে চলবে তা ঠিক করে"""
     url = url.lower().strip()
-    if url.endswith('.mp4') or '.mp4?' in url:
+    # যদি সরাসরি .mp4 লিঙ্ক হয় তবে ভিডিও প্লেয়ার চলবে
+    if url.endswith('.mp4') or '.mp4?' in url or '.mov' in url:
         return 'video'
+    # অন্য সব ক্ষেত্রে (YouTube, Koyeb, MKV, Watch links) আইফ্রেম কাজ করবে
     return 'iframe'
 
 def parse_url(url):
     """YouTube এর জন্য এমবেড লিঙ্ক তৈরি করে"""
     if 'youtube.com' in url or 'youtu.be' in url:
         yid = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11})', url)
-        if yid: return f"https://www.youtube.com/embed/{yid.group(1)}?autoplay=1&rel=0"
+        if yid: return f"https://www.youtube.com/embed/{yid.group(1)}?autoplay=1&rel=0&modestbranding=1"
     return url
 
-# --- প্রিমিয়াম সিএসএস ডিজাইন ---
+# --- প্রিমিয়াম সিএসএস ডিজাইন (GLOBAL CSS) ---
 GLOBAL_CSS = '''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
@@ -49,17 +52,18 @@ GLOBAL_CSS = '''
     .nav-link span { display: block; font-size: 22px; margin-bottom: 2px; }
 
     /* Search Bar */
-    .search-box { padding: 10px; background: #000; position: sticky; top: 0; z-index: 1500; text-align: center; }
-    .search-input { width: 90%; max-width: 500px; padding: 12px 20px; border-radius: 25px; border: 1px solid #333; background: #1a1a1a; color: #fff; outline: none; }
+    .search-container { padding: 10px; background: #000; position: sticky; top: 0; z-index: 1500; text-align: center; }
+    .search-input { width: 90%; max-width: 500px; padding: 12px 20px; border-radius: 25px; border: 1px solid #333; background: #1a1a1a; color: #fff; outline: none; font-size: 14px; }
+    .search-input:focus { border-color: var(--primary); }
 
     /* Auto Slider */
-    .slider-container { width: 100%; overflow: hidden; position: relative; margin-top: 5px; }
+    .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 5px; }
     .slider { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
     .slide-item { min-width: 90%; margin: 0 5%; height: 210px; position: relative; border-radius: 20px; overflow: hidden; border: 1px solid #333; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
     .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 25px 15px; }
 
-    /* Grid & Poster Badges */
+    /* Grid Layout & Badges */
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 15px; margin-bottom: 85px; }
     @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
     .card { position: relative; background: var(--card); border-radius: 15px; overflow: hidden; border: 1px solid #222; }
@@ -73,22 +77,22 @@ GLOBAL_CSS = '''
 
 # --- টেমপ্লেটস (Templates) ---
 
-# ১. ইউজার হোম, মুভি ও ড্রামা পেজ
 INDEX_HTML = GLOBAL_CSS + '''
 <!DOCTYPE html>
 <html>
 <head><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ site_name }}</title></head>
 <body>
-    <div style="padding: 20px; text-align: center; font-size: 26px; font-weight: 900; color: var(--primary); text-transform: uppercase;">{{ site_name }}</div>
+    <div style="padding: 20px; text-align: center; font-size: 26px; font-weight: 900; color: var(--primary); letter-spacing: 1px;">{{ site_name }}</div>
     
-    <div class="search-box">
+    <!-- ইউজার সার্চ অপশন -->
+    <div class="search-container">
         <form action="{{ request.path }}" method="GET">
             <input type="text" name="q" class="search-input" placeholder="Search movies or drama..." value="{{ q }}">
         </form>
     </div>
 
     {% if page_type == 'home' and not q %}
-    <div class="slider-container">
+    <div class="slider-wrap">
         <div class="slider" id="mainSlider">
             {% for s in slider_items %}
             <a href="/watch/{{ s['_id'] }}" class="slide-item">
@@ -100,10 +104,15 @@ INDEX_HTML = GLOBAL_CSS + '''
         </div>
     </div>
     <script>
-        let cur = 0; setInterval(() => {
-            cur = (cur + 1) % {{ slider_items|length }};
-            document.getElementById('mainSlider').style.transform = `translateX(-${cur * 100}%)`;
-        }, 4000);
+        let cur = 0;
+        const total = {{ slider_items|length }};
+        const sld = document.getElementById('mainSlider');
+        if (total > 0) {
+            setInterval(() => {
+                cur = (cur + 1) % total;
+                sld.style.transform = `translateX(-${cur * 100}%)`;
+            }, 4000);
+        }
     </script>
     {% endif %}
 
@@ -127,7 +136,6 @@ INDEX_HTML = GLOBAL_CSS + '''
 </html>
 '''
 
-# ২. ওয়াচ পেজ (টিকটক স্টাইল ভার্টিক্যাল ফিড)
 WATCH_HTML = '''
 <!DOCTYPE html>
 <html>
@@ -163,19 +171,19 @@ WATCH_HTML = '''
         
         <div class="ui-data">
             <span style="background:{{ item['badge_color'] }}; padding:3px 10px; border-radius:5px; font-size:10px; font-weight:bold; text-transform:uppercase;">{{ item['badge_text'] }}</span>
-            <h2 style="margin: 10px 0; color: #fff; font-size: 22px;">{{ item['title'] }}</h2>
+            <h2 style="margin: 10px 0; color: #fff;">{{ item['title'] }}</h2>
         </div>
         
         <div class="sidebar">
             {% for l in item['links'] %}
-            <button class="btn-link" onclick="updatePlayer('{{ item['_id'] }}', '{{ l['url'] }}')">{{ l['label'] }}</button>
+            <button class="btn-link" onclick="updateV('{{ item['_id'] }}', '{{ l['url'] }}')">{{ l['label'] }}</button>
             {% endfor %}
         </div>
     </div>
     {% endmacro %}
 
     <script>
-        function updatePlayer(id, raw) {
+        function updateV(id, raw) {
             const p = document.getElementById('p-'+id);
             let u = raw;
             if(raw.includes('youtube.com') || raw.includes('youtu.be')) {
@@ -194,76 +202,89 @@ WATCH_HTML = '''
 </html>
 '''
 
-# ৩. এডমিন প্যানেল
 ADMIN_HTML = '''
 <!DOCTYPE html>
 <html>
 <head><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-    body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-    .box { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 25px; max-width: 700px; margin: auto; }
-    input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+    body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
+    .container { max-width: 700px; margin: auto; }
+    .box { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 25px; }
+    input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
     .btn-main { background: #000; color: #fff; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .btn-green { background: #28a745; }
+    .btn-green { background: #28a745; color: #fff; }
     .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+    .edit-btn { background: #007bff; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-size: 12px; }
+    .del-btn { background: #dc3545; color: white; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-size: 12px; }
     .search-adm { padding: 10px; margin-bottom: 15px; width: 100%; border: 2px solid #000; border-radius: 10px; }
 </style>
 </head>
 <body>
-    <div class="box">
-        <h3>⚙️ Site Settings</h3>
-        <form method="POST" action="/admin/site_name">
-            <input name="site_name" value="{{ site_name }}" placeholder="Your Website Name">
-            <button class="btn-main">Update Name</button>
-        </form>
-    </div>
-
-    <div class="box">
-        <h3>{% if edit_item %}📝 Edit {% else %}🎬 Add {% endif %}</h3>
-        <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
-            <input name="title" placeholder="Title" value="{{ edit_item['title'] if edit_item }}" required>
-            <input name="poster" placeholder="Poster URL" value="{{ edit_item['poster'] if edit_item }}" required>
-            <div style="display:flex; gap:10px;">
-                <input name="badge_text" placeholder="Badge (e.g. 4K, Ep 01)" value="{{ edit_item['badge_text'] if edit_item }}" style="flex:2;">
-                <input name="badge_color" type="color" value="{{ edit_item['badge_color'] if edit_item else '#ff0050' }}" style="flex:1; height:45px;">
-            </div>
-            <select name="category">
-                <option value="movie" {{ 'selected' if edit_item and edit_item['category']=='movie' }}>Movie</option>
-                <option value="drama" {{ 'selected' if edit_item and edit_item['category']=='drama' }}>Drama</option>
-            </select>
-            <div id="links">
-                {% if edit_item %}
-                    {% for l in edit_item['links'] %}
-                    <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" value="{{ l['label'] }}" style="width:30%;"><input name="urls[]" value="{{ l['url'] }}" style="width:70%;"></div>
-                    {% endfor %}
-                {% else %}
-                    <div style="display:flex; gap:5px; margin-bottom:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>
-                {% endif %}
-            </div>
-            <button type="button" onclick="addL()" style="width:100%; padding:10px; margin-bottom:10px; cursor:pointer;">+ Add Link</button>
-            <button type="submit" class="btn-main btn-green">{% if edit_item %} UPDATE NOW {% else %} PUBLISH NOW {% endif %}</button>
-        </form>
-    </div>
-
-    <div class="box">
-        <h3>📂 Contents</h3>
-        <form method="GET" action="/admin"><input name="adm_q" class="search-adm" placeholder="Search to edit/delete..." value="{{ adm_q }}"></form>
-        {% for i in contents %}
-        <div class="row">
-            <span>{{ i['title'] }}</span>
-            <div>
-                <a href="/admin/edit/{{ i['_id'] }}" style="color:blue;">Edit</a> | 
-                <a href="/admin/delete/{{ i['_id'] }}" style="color:red;" onclick="return confirm('Delete?')">Delete</a>
-            </div>
+    <div class="container">
+        <div class="box">
+            <h3>⚙️ Global Settings</h3>
+            <form method="POST" action="/admin/site_name">
+                <input name="site_name" value="{{ site_name }}" placeholder="Site Name">
+                <button class="btn-main">Save Site Name</button>
+            </form>
         </div>
-        {% endfor %}
-        <br><a href="/" style="display:block; text-align:center;">Go Home</a>
+
+        <div class="box">
+            <h3>{% if edit_item %}📝 Edit Content {% else %}🎬 Add New Content {% endif %}</h3>
+            <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
+                <input name="title" placeholder="Title" value="{{ edit_item['title'] if edit_item }}" required>
+                <input name="poster" placeholder="Poster URL" value="{{ edit_item['poster'] if edit_item }}" required>
+                <div style="display:flex; gap:10px;">
+                    <input name="badge_text" placeholder="Badge (New, 4K, Ep 01)" value="{{ edit_item['badge_text'] if edit_item }}" style="flex:2;">
+                    <input name="badge_color" type="color" value="{{ edit_item['badge_color'] if edit_item else '#ff0050' }}" style="flex:1; height:45px; padding:0; background:none; border:none;">
+                </div>
+                <select name="category">
+                    <option value="movie" {{ 'selected' if edit_item and edit_item['category']=='movie' }}>Movie</option>
+                    <option value="drama" {{ 'selected' if edit_item and edit_item['category']=='drama' }}>Drama</option>
+                </select>
+                <div id="link-fields">
+                    {% if edit_item %}
+                        {% for l in edit_item['links'] %}
+                        <div style="display:flex; gap:5px; margin-bottom:5px;">
+                            <input name="labels[]" value="{{ l['label'] }}" placeholder="Label" style="width:30%;">
+                            <input name="urls[]" value="{{ l['url'] }}" placeholder="URL" style="width:70%;">
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="display:flex; gap:5px; margin-bottom:5px;">
+                            <input name="labels[]" placeholder="Label" style="width:30%;">
+                            <input name="urls[]" placeholder="URL" style="width:70%;">
+                        </div>
+                    {% endif %}
+                </div>
+                <button type="button" onclick="addLink()" style="background:#eee; border:none; padding:10px; border-radius:8px; margin-bottom:15px; width:100%; font-weight:bold; cursor:pointer;">+ Add Another Link</button>
+                <button type="submit" class="btn-main btn-green">{% if edit_item %} ✅ UPDATE NOW {% else %} 🚀 PUBLISH NOW {% endif %}</button>
+            </form>
+        </div>
+
+        <div class="box">
+            <h3>📂 List & Manage</h3>
+            <!-- এডমিন সার্চ অপশন -->
+            <form method="GET" action="/admin">
+                <input name="adm_q" class="search-adm" placeholder="Search by title to edit/delete..." value="{{ adm_q }}">
+            </form>
+            {% for i in contents %}
+            <div class="row">
+                <span>{{ i['title'] }}</span>
+                <div>
+                    <a href="/admin/edit/{{ i['_id'] }}" class="edit-btn">Edit</a>
+                    <a href="/admin/delete/{{ i['_id'] }}" class="del-btn" onclick="return confirm('Delete?')">Delete</a>
+                </div>
+            </div>
+            {% endfor %}
+            <br><a href="/" style="display:block; text-align:center; color:#888;">Back to Home</a>
+        </div>
     </div>
     <script>
-        function addL() {
+        function addLink() {
             const d = document.createElement('div'); d.style.display='flex'; d.style.gap='5px'; d.style.marginBottom='5px';
-            d.innerHTML = '<input name="labels[]" style="width:30%;"> <input name="urls[]" style="width:70%;">';
-            document.getElementById('links').appendChild(d);
+            d.innerHTML = '<input name="labels[]" placeholder="Label" style="width:30%;"> <input name="urls[]" placeholder="URL" style="width:70%;">';
+            document.getElementById('link-fields').appendChild(d);
         }
     </script>
 </body>
@@ -286,7 +307,8 @@ def home():
     slider = list(content_col.find().sort("_id", -1).limit(6))
     f = {"title": {"$regex": q, "$options": "i"}} if q else {}
     contents = list(content_col.find(f).sort("_id", -1))
-    return render_template_string(INDEX_HTML, page_type='home', slider_items=slider, contents=contents, section_title="Search Results" if q else "🔥 New Uploads", site_name=get_sn(), q=q)
+    st = f"🔍 Search: {q}" if q else "🔥 New Uploads"
+    return render_template_string(INDEX_HTML, page_type='home', slider_items=slider, contents=contents, section_title=st, site_name=get_sn(), q=q)
 
 @app.route('/movies')
 def movies_p():
@@ -294,7 +316,8 @@ def movies_p():
     f = {'category': 'movie'}
     if q: f['title'] = {"$regex": q, "$options": "i"}
     contents = list(content_col.find(f).sort("_id", -1))
-    return render_template_string(INDEX_HTML, page_type='movies', contents=contents, section_title="🎬 Movies", site_name=get_sn(), q=q)
+    st = f"🎬 Movies: {q}" if q else "🎬 All Movies"
+    return render_template_string(INDEX_HTML, page_type='movies', contents=contents, section_title=st, site_name=get_sn(), q=q)
 
 @app.route('/drama')
 def drama_p():
@@ -302,7 +325,8 @@ def drama_p():
     f = {'category': 'drama'}
     if q: f['title'] = {"$regex": q, "$options": "i"}
     contents = list(content_col.find(f).sort("_id", -1))
-    return render_template_string(INDEX_HTML, page_type='drama', contents=contents, section_title="📺 Drama", site_name=get_sn(), q=q)
+    st = f"📺 Drama: {q}" if q else "📺 All Drama"
+    return render_template_string(INDEX_HTML, page_type='drama', contents=contents, section_title=st, site_name=get_sn(), q=q)
 
 @app.route('/watch/<id>')
 def watch(id):
@@ -316,13 +340,13 @@ def watch(id):
 def login():
     if request.method == 'POST':
         if request.form['u'] == 'admin' and request.form['p'] == '1234':
-            session['admin'] = True
+            session['admin_auth'] = True
             return redirect('/admin')
-    return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;"><h2>Login</h2><form method="POST"><input name="u"><br><input name="p" type="password"><br><button>Login</button></form></body>'
+    return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;"><h2>Admin Login</h2><form method="POST"><input name="u" placeholder="User"><br><br><input name="p" type="password" placeholder="Pass"><br><br><button type="submit">Login</button></form></body>'
 
 @app.route('/admin')
 def admin():
-    if not session.get('admin'): return redirect('/login')
+    if not session.get('admin_auth'): return redirect('/login')
     q = request.args.get('adm_q', '')
     f = {"title": {"$regex": q, "$options": "i"}} if q else {}
     contents = list(content_col.find(f).sort("_id", -1))
@@ -330,7 +354,7 @@ def admin():
 
 @app.route('/admin/edit/<id>')
 def edit(id):
-    if not session.get('admin'): return redirect('/login')
+    if not session.get('admin_auth'): return redirect('/login')
     item = content_col.find_one({"_id": ObjectId(id)})
     return render_template_string(ADMIN_HTML, contents=list(content_col.find().sort("_id", -1)), site_name=get_sn(), edit_item=item, adm_q="")
 
@@ -338,24 +362,32 @@ def edit(id):
 def add():
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
     links = [{'label': ls[i], 'url': us[i]} for i in range(len(ls)) if ls[i]]
-    content_col.insert_one({'title':request.form.get('title'), 'poster':request.form.get('poster'), 'badge_text':request.form.get('badge_text'), 'badge_color':request.form.get('badge_color'), 'category':request.form.get('category'), 'links':links})
+    content_col.insert_one({
+        'title': request.form.get('title'), 'poster': request.form.get('poster'),
+        'badge_text': request.form.get('badge_text'), 'badge_color': request.form.get('badge_color'),
+        'category': request.form.get('category'), 'links': links
+    })
     return redirect('/admin')
 
 @app.route('/admin/update/<id>', methods=['POST'])
 def update(id):
     ls, us = request.form.getlist('labels[]'), request.form.getlist('urls[]')
     links = [{'label': ls[i], 'url': us[i]} for i in range(len(ls)) if ls[i]]
-    content_col.update_one({"_id":ObjectId(id)}, {"$set": {'title':request.form.get('title'), 'poster':request.form.get('poster'), 'badge_text':request.form.get('badge_text'), 'badge_color':request.form.get('badge_color'), 'category':request.form.get('category'), 'links':links}})
+    content_col.update_one({"_id": ObjectId(id)}, {"$set": {
+        'title': request.form.get('title'), 'poster': request.form.get('poster'),
+        'badge_text': request.form.get('badge_text'), 'badge_color': request.form.get('badge_color'),
+        'category': request.form.get('category'), 'links': links
+    }})
     return redirect('/admin')
 
 @app.route('/admin/site_name', methods=['POST'])
-def site_n():
-    settings_col.update_one({"key":"site_config"}, {"$set":{"name":request.form.get('site_name')}})
+def site_name_update():
+    settings_col.update_one({"key": "site_config"}, {"$set": {"name": request.form.get('site_name')}})
     return redirect('/admin')
 
 @app.route('/admin/delete/<id>')
 def delete(id):
-    if session.get('admin'): content_col.delete_one({"_id":ObjectId(id)})
+    if session.get('admin_auth'): content_col.delete_one({"_id": ObjectId(id)})
     return redirect('/admin')
 
 if __name__ == '__main__':
