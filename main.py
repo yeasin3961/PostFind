@@ -194,7 +194,7 @@ DETAILS_HTML = GLOBAL_CSS + '''
         <div class="int-box">
             <form action="/like/{{ item['_id']|string }}" method="POST"><button class="btn-int">👍 {{ item.get('likes', 0) }}</button></form>
             <button class="btn-int" onclick="document.getElementById('comments').scrollIntoView();">💬 {{ item.get('comments', [])|length }}</button>
-            <form action="/share/{{ item['_id']|string }}" method="POST"><button class="btn-int">🔗 {{ item.get('shares', 0) }}</button></form>
+            <button class="btn-int" onclick="copyShareLink('{{ item['_id']|string }}')">🔗 <span id="shTxt">Share</span></button>
         </div>
 
         <div style="background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; margin-top: 25px;">
@@ -216,6 +216,17 @@ DETAILS_HTML = GLOBAL_CSS + '''
             </div>
         </div>
     </div>
+
+    <script>
+        function copyShareLink(id) {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                document.getElementById('shTxt').innerText = "Copied!";
+                fetch('/share/' + id, { method: 'POST' });
+                setTimeout(() => { document.getElementById('shTxt').innerText = "Share"; }, 2000);
+            });
+        }
+    </script>
     
     <div class="bottom-nav">
         <a href="/" class="nav-link"><span>🏠</span>Home</a>
@@ -442,7 +453,7 @@ def handle_like(id):
 def handle_share(id):
     content_col.update_one({"_id": ObjectId(id)}, {"$inc": {"shares": 1}})
     track_stat('shares')
-    return redirect(f'/details/{id}')
+    return jsonify({"status": "success"})
 
 @app.route('/comment/<id>', methods=['POST'])
 def handle_comment(id):
@@ -473,9 +484,14 @@ def admin_dashboard():
     # ড্যাশবোর্ড ডাটা সংগ্রহ
     total_m = content_col.count_documents({"category": "movie"})
     total_d = content_col.count_documents({"category": "drama"})
-    db_stats = db.command("dbStats")
-    storage = round(db_stats.get('storageSize', 0) / (1024 * 1024), 2)
     
+    # MongoDB Atlas Free Tier Fix (dbStats Permission Error)
+    try:
+        db_stats = db.command("dbStats")
+        storage = round(db_stats.get('storageSize', 0) / (1024 * 1024), 2)
+    except:
+        storage = "N/A"
+        
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     t_stats = analytics_col.find_one({"date": today}) or {}
     top_list = list(content_col.find().sort("views", -1).limit(10))
