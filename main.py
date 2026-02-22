@@ -9,6 +9,7 @@ app = Flask(__name__)
 app.secret_key = "final_perfect_simple_movie_v100"
 
 # --- ডাটাবেস কানেকশন ---
+# আপনার দেওয়া MongoDB URI সরাসরি ব্যবহার করা হয়েছে
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client.simple_movie_db
@@ -16,20 +17,28 @@ content_col = db.contents
 settings_col = db.settings
 analytics_col = db.analytics 
 
-# --- ডাটাবেস ইনিশিয়ালাইজেশন ---
+# --- ডাটাবেস ইনিশিয়ালাইজেশন (প্রথমবার রান করার জন্য) ---
 def init_db():
     if not settings_col.find_one({"key": "site_config"}):
         settings_col.insert_one({"key": "site_config", "name": "MovieTok Pro"})
     if not settings_col.find_one({"key": "admin_auth"}):
         settings_col.insert_one({"key": "admin_auth", "username": "admin", "password": "1234"})
     if not settings_col.find_one({"key": "notice_config"}):
-        settings_col.insert_one({"key": "notice_config", "text": "Welcome!", "color": "#fff", "size": "14", "bg_color": "#e50914"})
+        settings_col.insert_one({"key": "notice_config", "text": "Welcome to our site!", "color": "#ffffff", "size": "14", "bg_color": "#e50914"})
     if not settings_col.find_one({"key": "popup_config"}):
-        settings_col.insert_one({"key": "popup_config", "text": "Join Us!", "bg_color": "#1a1a1a", "text_color": "#fff", "text_size": "18", "interval_mins": "5", "join_link": "#"})
+        settings_col.insert_one({
+            "key": "popup_config",
+            "text": "Join our Telegram channel for latest movies!",
+            "bg_color": "#1a1a1a",
+            "text_color": "#ffffff",
+            "text_size": "18",
+            "interval_mins": "5",
+            "join_link": "https://t.me/example"
+        })
 
 init_db()
 
-# --- হেল্পার ফাংশন (Analytics) ---
+# --- এনালিটিক্স হেল্পার ফাংশন ---
 def track_stat(stat_type):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     analytics_col.update_one({"date": today}, {"$inc": {stat_type: 1}}, upsert=True)
@@ -39,7 +48,7 @@ def track_visitor():
     country = request.headers.get('CF-IPCountry', 'Unknown') 
     analytics_col.update_one({"date": today}, {"$inc": {f"countries.{country}": 1}}, upsert=True)
 
-# --- ডিজাইন (CSS) ---
+# --- প্রিমিয়াম ডিজাইন (CSS) ---
 GLOBAL_CSS = '''
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
@@ -47,70 +56,85 @@ GLOBAL_CSS = '''
     body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
     a { text-decoration: none; color: inherit; }
     
+    /* নোটিশ বার */
     .notice-bar { width: 100%; padding: 8px 10px; text-align: center; font-weight: 600; position: relative; z-index: 2500; display: block; box-sizing: border-box; }
 
+    /* পপ-আপ ডিজাইন */
     #popupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-    .popup-content { width: 90%; max-width: 450px; border-radius: 20px; padding: 30px 20px; position: relative; text-align: center; border: 1px solid #333; }
-    .btn-popup-join { background: #0088cc; color: #fff; font-size: 11px; padding: 5px 12px; border-radius: 50px; }
+    .popup-content { width: 90%; max-width: 450px; border-radius: 20px; padding: 30px 20px; position: relative; text-align: center; border: 1px solid #333; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    .popup-header { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; }
+    .btn-popup-join { background: #0088cc; color: #fff; font-size: 11px; padding: 5px 12px; border-radius: 50px; font-weight: bold; }
+    .btn-popup-close { background: #444; color: #fff; font-size: 14px; width: 25px; height: 25px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 2000; }
-    .nav-link { color: #888; font-size: 13px; text-align: center; flex: 1; }
-    .nav-link.active { color: var(--primary); }
+    /* বটম নেভিগেশন */
+    .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(15px); 
+                  display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 2000; }
+    .nav-link { color: #888; font-size: 13px; font-weight: 600; text-align: center; flex: 1; transition: 0.3s; }
+    .nav-link.active { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+    .nav-link span { display: block; font-size: 20px; margin-bottom: 2px; }
 
+    /* গ্রিড ও কার্ড */
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 15px; margin-bottom: 90px; }
+    @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+    .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; }
+    .card img { width: 100%; height: 240px; object-fit: cover; }
+    .card-title { padding: 8px; font-size: 13px; text-align: center; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; }
+
+    /* অটো স্লাইডার */
     .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 10px; }
-    .slider { display: flex; transition: 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+    .slider { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
     .slide-item { min-width: 90%; margin: 0 5%; height: 220px; position: relative; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
-    .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 20px; font-weight: bold; }
+    .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 20px; font-size: 18px; font-weight: bold; }
 
+    /* সার্চ বার */
     .search-box { padding: 15px; background: #000; position: sticky; top: 0; z-index: 1500; text-align: center; }
     .search-input { width: 90%; max-width: 600px; padding: 12px 20px; border-radius: 30px; border: 1px solid #333; background: #1a1a1a; color: #fff; outline: none; }
 
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 15px; margin-bottom: 90px; }
-    @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
-    
-    .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; }
-    .card img { width: 100%; height: 240px; object-fit: cover; }
-    .card-title { padding: 8px; font-size: 13px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    
-    .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; }
+    /* ডিটেইল পেজ ইন্টারেকশন */
+    .int-box { display: flex; gap: 15px; margin: 15px 0; justify-content: center; }
+    .btn-int { background: #1a1a1a; padding: 10px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; border: 1px solid #333; color: #fff; font-weight: bold; }
+    .btn-int:hover { border-color: var(--primary); color: var(--primary); }
+    .comment-list { margin-top: 20px; border-top: 1px solid #222; padding-top: 10px; }
+    .comment-item { padding: 10px; border-bottom: 1px solid #111; font-size: 14px; }
+
+    /* সেকশন হেডার */
     .section-head { padding: 15px 20px 0; font-size: 18px; font-weight: 700; color: #eee; border-left: 4px solid var(--primary); margin-left: 15px; }
-
-    .int-box { display: flex; gap: 15px; margin: 15px 0; }
-    .btn-int { background: #1a1a1a; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; border: 1px solid #333; }
-    .btn-int:hover { border-color: var(--primary); }
-
-    .admin-nav { background: #111; padding: 10px; display: flex; gap: 10px; overflow-x: auto; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #333; }
-    .admin-nav a { padding: 8px 15px; background: #222; border-radius: 5px; font-size: 13px; white-space: nowrap; }
-    .admin-nav a.active { background: var(--primary); }
 </style>
 '''
 
+# --- পপ-আপ স্ক্রিপ্ট ---
 POPUP_SNIPPET = '''
 <div id="popupOverlay">
     <div class="popup-content" style="background: {{ popup.bg_color }};">
-        <div style="position: absolute; top: 10px; left: 10px;"><a href="{{ popup.join_link }}" target="_blank" class="btn-popup-join">💬 Join Media</a></div>
-        <div style="position: absolute; top: 10px; right: 10px;"><button style="background:none; border:none; color:#fff; cursor:pointer;" onclick="closePopup()">✕</button></div>
-        <div style="color: {{ popup.text_color }}; font-size: {{ popup.text_size }}px; margin-top: 25px;">{{ popup.text }}</div>
+        <div class="popup-header">
+            <a href="{{ popup.join_link }}" target="_blank" class="btn-popup-join">💬 Join Media</a>
+            <button class="btn-popup-close" onclick="closePopup()">✕</button>
+        </div>
+        <div style="color: {{ popup.text_color }}; font-size: {{ popup.text_size }}px; font-weight: 600; line-height: 1.5; margin-top: 15px;">
+            {{ popup.text }}
+        </div>
     </div>
 </div>
 <script>
     function showPopup() {
-        const last = localStorage.getItem('p_last');
+        const lastTime = localStorage.getItem('popup_timer');
+        const interval = {{ popup.interval_mins }} * 60 * 1000;
         const now = new Date().getTime();
-        if (!last || (now - last) > ({{ popup.interval_mins }} * 60000)) {
+        if (!lastTime || (now - lastTime) > interval) {
             document.getElementById('popupOverlay').style.display = 'flex';
         }
     }
     function closePopup() {
         document.getElementById('popupOverlay').style.display = 'none';
-        localStorage.setItem('p_last', new Date().getTime());
+        localStorage.setItem('popup_timer', new Date().getTime());
     }
-    window.onload = () => setTimeout(showPopup, 2000);
+    window.onload = () => { setTimeout(showPopup, 2000); };
 </script>
 '''
 
-# --- টেমপ্লেটস ---
+# --- ইউজার সাইড টেমপ্লেটস ---
 
 INDEX_HTML = GLOBAL_CSS + '''
 <!DOCTYPE html>
@@ -126,6 +150,10 @@ INDEX_HTML = GLOBAL_CSS + '''
     <div class="slider-wrap"><div class="slider" id="mainSlider">
         {% for s in slider_items %}<a href="/details/{{ s['_id']|string }}" class="slide-item"><div class="m-badge" style="background: {{ s['badge_color'] }};">{{ s['badge_text'] }}</div><img src="{{ s['poster'] }}"><div class="slide-info">{{ s['title'] }}</div></a>{% endfor %}
     </div></div>
+    <script>
+        let cur = 0; const sld = document.getElementById('mainSlider'); const total = {{ slider_items|length }};
+        if(total > 0) { setInterval(() => { cur = (cur + 1) % total; sld.style.transform = `translateX(-${cur * 100}%)`; }, 4500); }
+    </script>
     {% endif %}
 
     <div class="section-head">{{ section_title }}</div>
@@ -134,9 +162,9 @@ INDEX_HTML = GLOBAL_CSS + '''
     </div>
 
     <div class="bottom-nav">
-        <a href="/" class="nav-link {{ 'active' if page_type=='home' }}">🏠<br>Home</a>
-        <a href="/movies" class="nav-link {{ 'active' if page_type=='movies' }}">🎬<br>Movies</a>
-        <a href="/drama" class="nav-link {{ 'active' if page_type=='drama' }}">📺<br>Drama</a>
+        <a href="/" class="nav-link {{ 'active' if page_type=='home' }}"><span>🏠</span>Home</a>
+        <a href="/movies" class="nav-link {{ 'active' if page_type=='movies' }}"><span>🎬</span>Movies</a>
+        <a href="/drama" class="nav-link {{ 'active' if page_type=='drama' }}"><span>📺</span>Drama</a>
     </div>
 </body>
 </html>
@@ -147,41 +175,42 @@ DETAILS_HTML = GLOBAL_CSS + '''
 <html>
 <head><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ item['title'] }}</title></head>
 <body>
-    <div class="dt-container" style="padding: 20px; max-width: 800px; margin: auto; margin-bottom: 100px;">
-        <img src="{{ item['poster'] }}" style="width: 100%; border-radius: 15px; border: 1px solid #333;">
-        <h1 style="color: var(--primary); margin-top: 15px;">{{ item['title'] }}</h1>
+    <div class="notice-bar" style="background: {{ notice.bg_color }}; color: {{ notice.color }}; font-size: {{ notice.size }}px;">{{ notice.text }}</div>
+    <div style="padding: 20px; max-width: 800px; margin: auto; margin-bottom: 100px;">
+        <img src="{{ item['poster'] }}" style="width: 100%; border-radius: 15px; border: 1px solid #333; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+        <h1 style="color: var(--primary); margin: 20px 0 10px;">{{ item['title'] }}</h1>
         
         <div class="int-box">
-            <form action="/like/{{ item['_id']|string }}" method="POST"><button class="btn-int">👍 {{ item.get('likes', 0) }} Likes</button></form>
-            <button class="btn-int" onclick="document.getElementById('c-sec').scrollIntoView();">💬 {{ item.get('comments', [])|length }} Comments</button>
-            <form action="/share/{{ item['_id']|string }}" method="POST"><button class="btn-int">🔗 {{ item.get('shares', 0) }} Shares</button></form>
+            <form action="/like/{{ item['_id']|string }}" method="POST"><button class="btn-int">👍 {{ item.get('likes', 0) }}</button></form>
+            <button class="btn-int" onclick="document.getElementById('commentSection').scrollIntoView();">💬 {{ item.get('comments', [])|length }}</button>
+            <form action="/share/{{ item['_id']|string }}" method="POST"><button class="btn-int">🔗 {{ item.get('shares', 0) }}</button></form>
         </div>
 
-        <div style="background: #111; padding: 20px; border-radius: 10px; margin: 20px 0;">
-            <h3 style="margin:0 0 10px 0;">Download Links</h3>
-            {% for l in item['links'] %}<a href="{{ l['url'] }}" target="_blank" style="display:block; background: var(--primary); padding: 12px; border-radius: 8px; text-align:center; font-weight:bold; margin-bottom: 10px;">📥 {{ l['label'] }}</a>{% endfor %}
+        <div style="background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; margin-top: 20px;">
+            <h3 style="margin-top: 0; color: #888;">📥 Download / Watch Links</h3>
+            {% for l in item['links'] %}<a href="{{ l['url'] }}" target="_blank" style="display:block; background: var(--primary); color:#fff; padding: 15px; border-radius: 10px; text-align:center; font-weight:bold; margin-bottom: 10px;">{{ l['label'] }}</a>{% endfor %}
         </div>
 
-        <div id="c-sec">
+        <div id="commentSection" style="margin-top: 30px;">
             <h3>Comments</h3>
             <form action="/comment/{{ item['_id']|string }}" method="POST">
-                <input name="user" placeholder="Your Name" style="width:100%; padding:10px; background:#111; border:1px solid #333; color:#fff; margin-bottom:10px;">
-                <textarea name="text" placeholder="Write comment..." style="width:100%; padding:10px; background:#111; border:1px solid #333; color:#fff; height:80px;"></textarea>
-                <button style="width:100%; padding:10px; background:#333; color:#fff; border:none; margin-top:5px;">Post Comment</button>
+                <input name="user" placeholder="Your Name" style="width:100%; padding:12px; background:#111; border:1px solid #333; color:#fff; border-radius:8px; margin-bottom:10px;" required>
+                <textarea name="text" placeholder="Write a comment..." style="width:100%; padding:12px; background:#111; border:1px solid #333; color:#fff; border-radius:8px; height:80px;" required></textarea>
+                <button style="width:100%; padding:12px; background:#333; color:#fff; border:none; border-radius:8px; margin-top:10px; cursor:pointer; font-weight:bold;">Post Comment</button>
             </form>
-            <div style="margin-top:20px;">
+            <div class="comment-list">
                 {% for c in item.get('comments', [])[::-1] %}
-                <div style="padding:10px; border-bottom:1px solid #222;"><b>{{ c.user }}</b>: {{ c.text }}</div>
+                <div class="comment-item"><strong>{{ c.user }}</strong>: {{ c.text }}</div>
                 {% endfor %}
             </div>
         </div>
     </div>
-    <div class="bottom-nav"><a href="/" class="nav-link">🏠<br>Home</a><a href="/movies" class="nav-link">🎬<br>Movies</a><a href="/drama" class="nav-link">📺<br>Drama</a></div>
+    <div class="bottom-nav"><a href="/" class="nav-link"><span>🏠</span>Home</a><a href="/movies" class="nav-link"><span>🎬</span>Movies</a><a href="/drama" class="nav-link"><span>📺</span>Drama</a></div>
 </body>
 </html>
 '''
 
-# --- অ্যাডমিন প্যানেল টেমপ্লেটস ---
+# --- অ্যাডমিন লেআউট ও টেমপ্লেটস ---
 
 ADMIN_LAYOUT = '''
 <!DOCTYPE html>
@@ -189,27 +218,27 @@ ADMIN_LAYOUT = '''
 <head><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
     body { font-family: sans-serif; background: #000; color: #fff; margin: 0; padding: 0; }
-    .sidebar { background: #111; width: 220px; height: 100vh; position: fixed; border-right: 1px solid #222; }
-    .sidebar a { display: block; padding: 15px 20px; color: #888; text-decoration: none; border-bottom: 1px solid #222; }
-    .sidebar a.active { color: #fff; background: #e50914; }
-    .main { margin-left: 220px; padding: 25px; }
+    .sidebar { background: #111; width: 240px; height: 100vh; position: fixed; border-right: 1px solid #222; }
+    .sidebar a { display: block; padding: 15px 20px; color: #888; text-decoration: none; border-bottom: 1px solid #222; font-size: 14px; }
+    .sidebar a.active { color: #fff; background: #e50914; font-weight: bold; }
+    .main { margin-left: 240px; padding: 25px; }
     @media (max-width: 768px) { .sidebar { width: 100%; height: auto; position: relative; display: flex; overflow-x: auto; } .main { margin-left: 0; } }
-    .stat-card { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #222; margin-bottom: 20px; }
-    .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #222; margin-bottom: 20px; }
-    input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 5px; box-sizing: border-box; }
-    .btn { background: #e50914; color: #fff; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .stat-card { background: #111; padding: 20px; border-radius: 12px; border: 1px solid #222; text-align: center; }
+    .box { background: #111; padding: 20px; border-radius: 12px; border: 1px solid #222; margin-bottom: 25px; }
+    input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; box-sizing: border-box; }
+    .btn { background: #e50914; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #222; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #222; font-size: 13px; }
 </style>
 </head>
 <body>
     <div class="sidebar">
-        <div style="padding: 20px; font-weight: 900; color: #e50914;">ADMIN PANEL</div>
+        <div style="padding: 20px; font-weight: 900; color: #e50914; font-size: 20px;">MovieTok Admin</div>
         <a href="/admin/dashboard" class="{{ 'active' if menu=='dash' }}">📊 Dashboard</a>
         <a href="/admin/manage" class="{{ 'active' if menu=='manage' }}">🎬 Manage Content</a>
         <a href="/admin/settings" class="{{ 'active' if menu=='settings' }}">⚙️ Site Settings</a>
         <a href="/admin/security" class="{{ 'active' if menu=='security' }}">🔒 Admin Security</a>
-        <a href="/">🏠 View Site</a>
+        <a href="/" style="background:#222;">🏠 Visit Site</a>
     </div>
     <div class="main">{% block content %}{% endblock %}</div>
 </body>
@@ -219,25 +248,23 @@ ADMIN_LAYOUT = '''
 DASHBOARD_HTML = '''
 {% extends "admin_layout" %}
 {% block content %}
-<h2>System & Daily Analytics</h2>
+<h2>System Overview</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+    <div class="stat-card" style="border-top: 4px solid #007bff;"><h3>Movies</h3><p style="font-size: 24px; font-weight: bold;">{{ total_movies }}</p></div>
+    <div class="stat-card" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 24px; font-weight: bold;">{{ total_dramas }}</p></div>
+    <div class="stat-card" style="border-top: 4px solid #28a745;"><h3>Storage</h3><p style="font-size: 24px; font-weight: bold;">{{ db_storage }} MB</p></div>
+    <div class="stat-card" style="border-top: 4px solid #e50914;"><h3>Daily Views</h3><p style="font-size: 24px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
+</div>
 
-<!-- ডাটাবেস ও কন্টেন্ট স্ট্যাটাস -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
-    <div class="stat-card" style="border-top: 4px solid #007bff;"><h3>Total Movies</h3><p style="font-size: 28px; font-weight: bold; color: #007bff;">{{ total_movies }}</p></div>
-    <div class="stat-card" style="border-top: 4px solid #ffc107;"><h3>Total Dramas</h3><p style="font-size: 28px; font-weight: bold; color: #ffc107;">{{ total_dramas }}</p></div>
-    <div class="stat-card" style="border-top: 4px solid #28a745;"><h3>DB Storage</h3><p style="font-size: 28px; font-weight: bold; color: #28a745;">{{ db_storage }} MB</p></div>
+    <div class="stat-card"><h5>Likes (Today)</h5><p>{{ today_stats.get('likes', 0) }}</p></div>
+    <div class="stat-card"><h5>Comments (Today)</h5><p>{{ today_stats.get('comments', 0) }}</p></div>
+    <div class="stat-card"><h5>Shares (Today)</h5><p>{{ today_stats.get('shares', 0) }}</p></div>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-    <div class="stat-card"><h3>Daily Views</h3><p style="font-size: 24px;">{{ today_stats.get('views', 0) }}</p></div>
-    <div class="stat-card"><h3>Daily Likes</h3><p style="font-size: 24px;">{{ today_stats.get('likes', 0) }}</p></div>
-    <div class="stat-card"><h3>Daily Comments</h3><p style="font-size: 24px;">{{ today_stats.get('comments', 0) }}</p></div>
-    <div class="stat-card"><h3>Daily Shares</h3><p style="font-size: 24px;">{{ today_stats.get('shares', 0) }}</p></div>
-</div>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 25px;">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
     <div class="box">
-        <h3>🔥 Top 10 Viewed Content</h3>
+        <h3>🔥 Top 10 Popular</h3>
         <table>
             <tr><th>Title</th><th>Views</th></tr>
             {% for i in top_content %}
@@ -246,7 +273,7 @@ DASHBOARD_HTML = '''
         </table>
     </div>
     <div class="box">
-        <h3>🌍 Visitor Countries (Today)</h3>
+        <h3>🌍 Countries (Today)</h3>
         <table>
             <tr><th>Country</th><th>Views</th></tr>
             {% for c, v in today_stats.get('countries', {}).items() %}
@@ -262,13 +289,13 @@ MANAGE_HTML = '''
 {% extends "admin_layout" %}
 {% block content %}
 <div class="box">
-    <h3>{% if edit_item %}📝 Edit{% else %}🎬 Add New{% endif %}</h3>
+    <h3>{% if edit_item %}📝 Edit Content{% else %}🎬 Add Content{% endif %}</h3>
     <form method="POST" action="{% if edit_item %}/admin/update/{{ edit_item['_id'] }}{% else %}/admin/add{% endif %}">
-        <input name="title" placeholder="Title" value="{{ edit_item.title if edit_item }}" required>
+        <input name="title" placeholder="Content Title" value="{{ edit_item.title if edit_item }}" required>
         <input name="poster" placeholder="Poster URL" value="{{ edit_item.poster if edit_item }}" required>
         <div style="display:flex; gap:10px;">
-            <input name="badge_text" placeholder="Badge" value="{{ edit_item.badge_text if edit_item }}" style="flex:2;">
-            <input name="badge_color" type="color" value="{{ edit_item.badge_color if edit_item else '#e50914' }}" style="flex:1;">
+            <input name="badge_text" placeholder="Badge (e.g. 4K, New)" value="{{ edit_item.badge_text if edit_item }}" style="flex:2;">
+            <input name="badge_color" type="color" value="{{ edit_item.badge_color if edit_item else '#e50914' }}" style="flex:1; height:45px;">
         </div>
         <select name="category">
             <option value="movie" {{ 'selected' if edit_item and edit_item.category=='movie' }}>Movie</option>
@@ -278,25 +305,25 @@ MANAGE_HTML = '''
             {% if edit_item %}{% for l in edit_item.links %}<div style="display:flex; gap:5px;"><input name="labels[]" value="{{ l.label }}" style="width:30%;"><input name="urls[]" value="{{ l.url }}" style="width:70%;"></div>{% endfor %}
             {% else %}<div style="display:flex; gap:5px;"><input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;"></div>{% endif %}
         </div>
-        <button type="button" onclick="addLink()" style="margin: 10px 0;">+ Add More Link</button><br>
-        <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Content{% endif %}</button>
+        <button type="button" onclick="addLink()" style="background:#333; color:#fff; padding:8px; border:none; margin:10px 0; cursor:pointer; width:100%;">+ Add Another Link</button>
+        <button class="btn">{% if edit_item %}Update Now{% else %}Publish Now{% endif %}</button>
     </form>
 </div>
 
 <div class="box">
     <h3>📂 Content List</h3>
-    <form method="GET"><input name="adm_q" placeholder="Search..." value="{{ adm_q }}"></form>
+    <form method="GET"><input name="adm_q" placeholder="Search to manage..." value="{{ adm_q }}"></form>
     <table>
-        <tr><th>Title</th><th>Type</th><th>Views</th><th>Action</th></tr>
+        <tr><th>Title</th><th>Views</th><th>Action</th></tr>
         {% for i in contents %}
         <tr>
-            <td>{{ i.title }}</td><td>{{ i.category }}</td><td>{{ i.get('views', 0) }}</td>
-            <td><a href="/admin/manage?edit_id={{ i['_id']|string }}" style="color:cyan;">Edit</a> | <a href="/admin/delete/{{ i['_id']|string }}" style="color:red;">Del</a></td>
+            <td>{{ i.title }}</td><td>{{ i.get('views', 0) }}</td>
+            <td><a href="/admin/manage?edit_id={{ i['_id']|string }}" style="color:cyan;">Edit</a> | <a href="/admin/delete/{{ i['_id']|string }}" style="color:red;" onclick="return confirm('Delete?')">Del</a></td>
         </tr>
         {% endfor %}
     </table>
 </div>
-<script>function addLink(){ let d=document.createElement('div'); d.style.display='flex'; d.style.gap='5px'; d.innerHTML='<input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;">'; document.getElementById('links').appendChild(d); }</script>
+<script>function addLink(){ let d=document.createElement('div'); d.style.display='flex'; d.style.gap='5px'; d.style.marginTop='5px'; d.innerHTML='<input name="labels[]" placeholder="Label" style="width:30%;"><input name="urls[]" placeholder="URL" style="width:70%;">'; document.getElementById('links').appendChild(d); }</script>
 {% endblock %}
 '''
 
@@ -304,8 +331,8 @@ SETTINGS_HTML = '''
 {% extends "admin_layout" %}
 {% block content %}
 <div class="box">
-    <h3>⚙️ Site Branding</h3>
-    <form method="POST" action="/admin/site_name"><input name="site_name" value="{{ site_name }}"><button class="btn">Update Name</button></form>
+    <h3>⚙️ General Settings</h3>
+    <form method="POST" action="/admin/site_name"><label>Site Name</label><input name="site_name" value="{{ site_name }}"><button class="btn">Update Name</button></form>
 </div>
 <div class="box">
     <h3>📢 Top Notice Bar</h3>
@@ -316,11 +343,11 @@ SETTINGS_HTML = '''
             <input name="notice_bg" type="color" value="{{ notice.bg_color }}">
             <input name="notice_size" type="number" value="{{ notice.size }}">
         </div>
-        <button class="btn">Update Notice</button>
+        <button class="btn">Save Notice</button>
     </form>
 </div>
 <div class="box">
-    <h3>✨ Pop-up Settings</h3>
+    <h3>✨ Pop-up Notice</h3>
     <form method="POST" action="/admin/update_popup">
         <input name="popup_text" value="{{ popup.text }}">
         <input name="join_link" value="{{ popup.join_link }}">
@@ -330,7 +357,7 @@ SETTINGS_HTML = '''
             <input name="popup_size" type="number" value="{{ popup.text_size }}">
             <input name="popup_interval" type="number" value="{{ popup.interval_mins }}">
         </div>
-        <button class="btn">Update Pop-up</button>
+        <button class="btn">Save Pop-up</button>
     </form>
 </div>
 {% endblock %}
@@ -340,11 +367,11 @@ SECURITY_HTML = '''
 {% extends "admin_layout" %}
 {% block content %}
 <div class="box">
-    <h3>🔒 Change Admin Access</h3>
+    <h3>🔒 Admin Access</h3>
     <form method="POST" action="/admin/update_auth">
         <label>New Username</label><input name="new_username" required>
         <label>New Password</label><input name="new_password" type="password" required>
-        <button class="btn">Save New Credentials</button>
+        <button class="btn">Update Admin Credentials</button>
     </form>
 </div>
 {% endblock %}
@@ -387,6 +414,7 @@ def details(id):
     if not item: return redirect('/')
     return render_template_string(DETAILS_HTML, item=item, notice=settings_col.find_one({"key": "notice_config"}))
 
+# --- ইউজার অ্যাকশনস ---
 @app.route('/like/<id>', methods=['POST'])
 def like(id):
     content_col.update_one({"_id": ObjectId(id)}, {"$inc": {"likes": 1}})
@@ -408,6 +436,7 @@ def comment(id):
         track_stat('comments')
     return redirect(f'/details/{id}')
 
+# --- অ্যাডমিন সিস্টেম ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -415,7 +444,7 @@ def login():
         if request.form['u'] == creds['username'] and request.form['p'] == creds['password']:
             session['is_admin'] = True
             return redirect('/admin/dashboard')
-    return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;"><h2>Admin</h2><form method="POST"><input name="u" placeholder="User"><br><input name="p" type="password" placeholder="Pass"><br><button type="submit">Login</button></form></body>'
+    return '<body style="background:#000;color:#fff;text-align:center;padding-top:100px;"><h2>Admin Login</h2><form method="POST"><input name="u" placeholder="Username"><br><br><input name="p" type="password" placeholder="Password"><br><br><button type="submit" style="padding:10px 30px; background:#e50914; color:#fff; border:none; cursor:pointer;">Login</button></form></body>'
 
 @app.context_processor
 def inject_admin_layout():
@@ -424,22 +453,12 @@ def inject_admin_layout():
 @app.route('/admin/dashboard')
 def admin_dash():
     if not session.get('is_admin'): return redirect('/login')
-    
-    # টোটাল কন্টেন্ট কাউন্ট
-    total_movies = content_col.count_documents({"category": "movie"})
-    total_dramas = content_col.count_documents({"category": "drama"})
-    
-    # ডাটাবেস স্টোরেজ স্ট্যাটাস (MB তে)
     stats = db.command("dbStats")
     db_storage = round(stats.get('storageSize', 0) / (1024 * 1024), 2)
-    
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     today_stats = analytics_col.find_one({"date": today}) or {}
     top_content = list(content_col.find().sort("views", -1).limit(10))
-    
-    return render_template_string(DASHBOARD_HTML, menu='dash', today_stats=today_stats, 
-                                  top_content=top_content, total_movies=total_movies, 
-                                  total_dramas=total_dramas, db_storage=db_storage)
+    return render_template_string(DASHBOARD_HTML, menu='dash', today_stats=today_stats, top_content=top_content, total_movies=content_col.count_documents({"category": "movie"}), total_dramas=content_col.count_documents({"category": "drama"}), db_storage=db_storage)
 
 @app.route('/admin/manage')
 def admin_manage():
@@ -474,6 +493,11 @@ def update(id):
     content_col.update_one({"_id":ObjectId(id)}, {"$set": {'title':request.form.get('title'), 'poster':request.form.get('poster'), 'badge_text':request.form.get('badge_text'), 'badge_color':request.form.get('badge_color'), 'category':request.form.get('category'), 'links':links}})
     return redirect('/admin/manage')
 
+@app.route('/admin/delete/<id>')
+def delete(id):
+    if session.get('is_admin'): content_col.delete_one({"_id":ObjectId(id)})
+    return redirect('/admin/manage')
+
 @app.route('/admin/site_name', methods=['POST'])
 def update_sn():
     settings_col.update_one({"key": "site_config"}, {"$set": {"name": request.form.get('site_name')}})
@@ -493,11 +517,6 @@ def update_popup():
 def update_auth():
     settings_col.update_one({"key": "admin_auth"}, {"$set": {"username": request.form.get('new_username'), "password": request.form.get('new_password')}})
     return redirect('/admin/security')
-
-@app.route('/admin/delete/<id>')
-def delete(id):
-    if session.get('is_admin'): content_col.delete_one({"_id":ObjectId(id)})
-    return redirect('/admin/manage')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
