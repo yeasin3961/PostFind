@@ -18,31 +18,34 @@ analytics_col = db.analytics
 
 # --- ডাটাবেস ইনিশিয়ালাইজেশন ---
 def init_db():
-    if not settings_col.find_one({"key": "site_config"}):
-        settings_col.insert_one({"key": "site_config", "name": "MovieTok Pro"})
-    
-    if not settings_col.find_one({"key": "admin_auth"}):
-        settings_col.insert_one({"key": "admin_auth", "username": "admin", "password": "1234"})
-    
-    if not settings_col.find_one({"key": "notice_config"}):
-        settings_col.insert_one({
-            "key": "notice_config", 
-            "text": "Welcome to our site!", 
-            "color": "#ffffff", 
-            "size": "14", 
-            "bg_color": "#e50914"
-        })
-    
-    if not settings_col.find_one({"key": "popup_config"}):
-        settings_col.insert_one({
-            "key": "popup_config",
-            "text": "Join our Telegram channel for latest updates!",
-            "bg_color": "#1a1a1a",
-            "text_color": "#ffffff",
-            "text_size": "18",
-            "interval_mins": "5",
-            "join_link": "https://t.me/example"
-        })
+    try:
+        if not settings_col.find_one({"key": "site_config"}):
+            settings_col.insert_one({"key": "site_config", "name": "MovieTok Pro"})
+        
+        if not settings_col.find_one({"key": "admin_auth"}):
+            settings_col.insert_one({"key": "admin_auth", "username": "admin", "password": "1234"})
+        
+        if not settings_col.find_one({"key": "notice_config"}):
+            settings_col.insert_one({
+                "key": "notice_config", 
+                "text": "Welcome to our site!", 
+                "color": "#ffffff", 
+                "size": "14", 
+                "bg_color": "#e50914"
+            })
+        
+        if not settings_col.find_one({"key": "popup_config"}):
+            settings_col.insert_one({
+                "key": "popup_config",
+                "text": "Join our Telegram channel for latest updates!",
+                "bg_color": "#1a1a1a",
+                "text_color": "#ffffff",
+                "text_size": "18",
+                "interval_mins": "5",
+                "join_link": "https://t.me/example"
+            })
+    except:
+        pass
 
 init_db()
 
@@ -63,40 +66,32 @@ GLOBAL_CSS = '''
     :root { --primary: #e50914; --bg: #000; --card: #141414; }
     body { background: var(--bg); color: #fff; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
     a { text-decoration: none; color: inherit; }
-    
     .notice-bar { width: 100%; padding: 8px 10px; text-align: center; font-weight: 600; position: relative; z-index: 2500; display: block; box-sizing: border-box; }
-
     #popupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
     .popup-content { width: 90%; max-width: 450px; border-radius: 20px; padding: 35px 20px; position: relative; text-align: center; border: 1px solid #333; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     .popup-header { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; }
     .btn-popup-join { background: #0088cc; color: #fff; font-size: 11px; padding: 5px 12px; border-radius: 50px; font-weight: bold; }
     .btn-popup-close { background: #444; color: #fff; font-size: 14px; width: 25px; height: 25px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
     .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(15px); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 2000; }
     .nav-link { color: #888; font-size: 12px; font-weight: 600; text-align: center; flex: 1; transition: 0.3s; }
     .nav-link.active { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
     .nav-link span { display: block; font-size: 20px; margin-bottom: 2px; }
-
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 15px; margin-bottom: 90px; }
     @media(min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
     .card { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; border: 1px solid #222; transition: 0.3s; }
     .card img { width: 100%; height: 240px; object-fit: cover; }
     .card-title { padding: 8px; font-size: 13px; text-align: center; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m-badge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; z-index: 10; text-transform: uppercase; color: #fff; }
-
     .slider-wrap { width: 100%; overflow: hidden; position: relative; margin-top: 10px; }
     .slider { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
     .slide-item { min-width: 90%; margin: 0 5%; height: 220px; position: relative; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
     .slide-info { position: absolute; bottom: 0; background: linear-gradient(transparent, #000); width: 100%; padding: 20px; font-size: 18px; font-weight: bold; }
-
     .search-box { padding: 15px; background: #000; position: sticky; top: 0; z-index: 1500; text-align: center; border-bottom: 1px solid #222; }
     .search-input { width: 90%; max-width: 600px; padding: 12px 20px; border-radius: 30px; border: 1px solid #333; background: #1a1a1a; color: #fff; outline: none; }
-
     .int-box { display: flex; gap: 15px; margin: 15px 0; justify-content: center; }
     .btn-int { background: #1a1a1a; padding: 10px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; border: 1px solid #333; color: #fff; font-weight: bold; display: flex; align-items: center; gap: 5px; }
     .btn-int:hover { border-color: var(--primary); color: var(--primary); }
-
     .section-head { padding: 15px 20px 0; font-size: 18px; font-weight: 700; color: #eee; border-left: 4px solid var(--primary); margin-left: 15px; }
 </style>
 '''
@@ -130,8 +125,6 @@ POPUP_SNIPPET = '''
 </script>
 '''
 
-# --- টেমপ্লেটস ---
-
 INDEX_HTML = GLOBAL_CSS + '''
 <!DOCTYPE html>
 <html>
@@ -139,15 +132,12 @@ INDEX_HTML = GLOBAL_CSS + '''
 <body>
     ''' + POPUP_SNIPPET + '''
     <div class="notice-bar" style="background: {{ notice.bg_color }}; color: {{ notice.color }}; font-size: {{ notice.size }}px;">{{ notice.text }}</div>
-    
     <div style="padding: 20px; text-align: center; font-size: 26px; font-weight: 900; color: var(--primary); text-transform: uppercase;">{{ site_name }}</div>
-    
     <div class="search-box">
         <form action="{{ request.path }}" method="GET">
             <input type="text" name="q" class="search-input" placeholder="Search movies or drama..." value="{{ q }}">
         </form>
     </div>
-
     {% if page_type == 'home' and not q %}
     <div class="slider-wrap"><div class="slider" id="mainSlider">
         {% for s in slider_items %}<a href="/details/{{ s['_id']|string }}" class="slide-item"><div class="m-badge" style="background: {{ s['badge_color'] }};">{{ s['badge_text'] }}</div><img src="{{ s['poster'] }}"><div class="slide-info">{{ s['title'] }}</div></a>{% endfor %}
@@ -157,12 +147,10 @@ INDEX_HTML = GLOBAL_CSS + '''
         if(total > 0) { setInterval(() => { cur = (cur + 1) % total; sld.style.transform = `translateX(-${cur * 100}%)`; }, 4500); }
     </script>
     {% endif %}
-
     <div class="section-head">{{ section_title }}</div>
     <div class="grid">
         {% for item in contents %}<a href="/details/{{ item['_id']|string }}" class="card"><div class="m-badge" style="background: {{ item['badge_color'] }};">{{ item['badge_text'] }}</div><img src="{{ item['poster'] }}"><div class="card-title">{{ item['title'] }}</div></a>{% endfor %}
     </div>
-
     <div class="bottom-nav">
         <a href="/" class="nav-link {{ 'active' if page_type=='home' }}"><span>🏠</span>Home</a>
         <a href="/movies" class="nav-link {{ 'active' if page_type=='movies' }}"><span>🎬</span>Movies</a>
@@ -178,22 +166,18 @@ DETAILS_HTML = GLOBAL_CSS + '''
 <head><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ item['title'] }}</title></head>
 <body>
     <div class="notice-bar" style="background: {{ notice.bg_color }}; color: {{ notice.color }}; font-size: {{ notice.size }}px;">{{ notice.text }}</div>
-    
     <div style="padding: 20px; max-width: 800px; margin: auto; margin-bottom: 100px;">
         <img src="{{ item['poster'] }}" style="width: 100%; border-radius: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         <h1 style="color: var(--primary); margin: 25px 0 10px; font-size: 28px;">{{ item['title'] }}</h1>
-        
         <div class="int-box">
             <form action="/like/{{ item['_id']|string }}" method="POST"><button class="btn-int">👍 {{ item.get('likes', 0) }}</button></form>
             <button class="btn-int" onclick="document.getElementById('comments').scrollIntoView();">💬 {{ item.get('comments', [])|length }}</button>
             <button class="btn-int" onclick="copyShare()">🔗 <span id="shTxt">Share</span></button>
         </div>
-
         <div style="background: #111; padding: 25px; border-radius: 15px; border: 1px solid #222; margin-top: 25px;">
             <h3 style="margin-top: 0; color: #888;">📥 Watch / Download Links</h3>
             {% for l in item['links'] %}<a href="{{ l['url'] }}" target="_blank" style="display:block; background: var(--primary); color:#fff; padding: 15px; border-radius: 10px; text-align:center; font-weight:bold; margin-bottom: 12px; font-size: 16px;">📥 {{ l['label'] }}</a>{% endfor %}
         </div>
-
         <div id="comments" style="margin-top: 40px;">
             <h3>Comments</h3>
             <form action="/comment/{{ item['_id']|string }}" method="POST">
@@ -208,7 +192,6 @@ DETAILS_HTML = GLOBAL_CSS + '''
             </div>
         </div>
     </div>
-
     <script>
         function copyShare() {
             const url = window.location.href;
@@ -219,7 +202,6 @@ DETAILS_HTML = GLOBAL_CSS + '''
             }).catch(err => { alert("Copy failed"); });
         }
     </script>
-    
     <div class="bottom-nav">
         <a href="/" class="nav-link"><span>🏠</span>Home</a>
         <a href="/movies" class="nav-link"><span>🎬</span>Movies</a>
@@ -271,13 +253,11 @@ DASHBOARD_HTML = '''
     <div class="card-stat" style="border-top: 4px solid #ffc107;"><h3>Dramas</h3><p style="font-size: 28px; font-weight: bold;">{{ total_dramas }}</p></div>
     <div class="card-stat" style="border-top: 4px solid #e50914;"><h3>Daily Views</h3><p style="font-size: 28px; font-weight: bold;">{{ today_stats.get('views', 0) }}</p></div>
 </div>
-
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
     <div class="card-stat" style="padding: 15px;"><h5>Likes (Today)</h5><p>{{ today_stats.get('likes', 0) }}</p></div>
     <div class="card-stat" style="padding: 15px;"><h5>Comments (Today)</h5><p>{{ today_stats.get('comments', 0) }}</p></div>
     <div class="card-stat" style="padding: 15px;"><h5>Shares (Today)</h5><p>{{ today_stats.get('shares', 0) }}</p></div>
 </div>
-
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
     <div class="box">
         <h3>🔥 Top 10 Popular Content</h3>
@@ -292,9 +272,13 @@ DASHBOARD_HTML = '''
         <h3>🌍 Visitor Countries (Today)</h3>
         <table>
             <tr><th>Country</th><th>Views</th></tr>
-            {% for c, v in today_stats.get('countries', {}).items() %}
-            <tr><td>{{ c }}</td><td>{{ v }}</td></tr>
-            {% endfor %}
+            {% if today_stats.get('countries') %}
+                {% for c, v in today_stats.get('countries').items() %}
+                <tr><td>{{ c }}</td><td>{{ v }}</td></tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="2">No data yet</td></tr>
+            {% endif %}
         </table>
     </div>
 </div>
@@ -325,7 +309,6 @@ MANAGE_HTML = '''
         <button class="btn">{% if edit_item %}Update Changes{% else %}Publish Now{% endif %}</button>
     </form>
 </div>
-
 <div class="box">
     <h3>📂 Manage Contents</h3>
     <form method="GET"><input name="adm_q" placeholder="Search to edit/delete..." value="{{ adm_q }}"></form>
@@ -467,15 +450,15 @@ def inject_layout():
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if not session.get('is_admin'): return redirect('/login')
-    
-    total_m = content_col.count_documents({"category": "movie"})
-    total_d = content_col.count_documents({"category": "drama"})
-    
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    t_stats = analytics_col.find_one({"date": today}) or {}
-    top_list = list(content_col.find().sort("views", -1).limit(10))
-    
-    return render_template_string(DASHBOARD_HTML, menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d)
+    try:
+        total_m = content_col.count_documents({"category": "movie"})
+        total_d = content_col.count_documents({"category": "drama"})
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        t_stats = analytics_col.find_one({"date": today}) or {"views": 0, "likes": 0, "comments": 0, "shares": 0, "countries": {}}
+        top_list = list(content_col.find().sort("views", -1).limit(10))
+        return render_template_string(DASHBOARD_HTML, menu='dash', today_stats=t_stats, top_content=top_list, total_movies=total_m, total_dramas=total_d)
+    except Exception as e:
+        return f"Dashboard Error: {str(e)}"
 
 @app.route('/admin/manage')
 def admin_manage():
